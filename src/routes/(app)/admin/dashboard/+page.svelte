@@ -11,7 +11,7 @@
 
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
   {#each cards as c}
-    <div class="rounded-xl border border-neutral bg-neutral p-4">
+    <div class="rounded-xl border border-border bg-card/80 shadow-sm hover:border-primary/40 transition-colors p-4">
       <div class="text-xs text-neutral">{c.title}</div>
       <div class="mt-2 flex items-baseline gap-2">
         <div class="text-2xl font-semibold">{c.value}</div>
@@ -23,7 +23,7 @@
 
 <div class="mt-6 rounded-xl border border-neutral bg-neutral p-4">
   <div class="text-sm font-medium mb-3">Total Visitors</div>
-  <div class="h-48 rounded bg-neutral"></div>
+  <div class="h-48 rounded bg-stone"></div>
 </div>
 
 <div class="mt-6 rounded-xl border border-neutral bg-neutral">
