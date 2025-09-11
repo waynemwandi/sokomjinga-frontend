@@ -1,38 +1,54 @@
-# sv
+# SokoMjinga Frontend
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Frontend application for **SokoMjinga**, built with [SvelteKit](https://kit.svelte.dev/) and [shadcn-svelte](https://ui.shadcn.com/).
 
-## Creating a project
+This repo handles the **UI layer** only. It consumes APIs from the [SokoMjinga API](https://github.com/waynemwandi/sokomjinga-api.git).
 
-If you're seeing this, you've probably already done this step. Congrats!
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- npm
+
+### Installation
 
 ```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+npm install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Development
 
 ```sh
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+### Environment Variables
 
-To create a production version of your app:
+Create a .env file at the project root:
+
+```dotnetcli
+PUBLIC_API_BASE=[http://localhost:8000]
+```
+
+### Building
 
 ```sh
 npm run build
+
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## Project Structure
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+- src/ -> routes, lib, components
+- static/ -> static assets
+- app.css -> global styles
+
+### Start Dev Server
+
+```sh
+npm run dev
+```
