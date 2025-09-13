@@ -54,6 +54,22 @@
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+
+  --radius: 0.625rem;
+  /* MARKET semantics */
+  --yes: oklch(0.62 0.12 165); /* teal/emerald */
+  --yes-fg: oklch(0.98 0.02 165);
+  --no: oklch(0.55 0.24 29); /* rose/crimson (near your --destructive hue) */
+  --no-fg: oklch(0.99 0 0);
+  --gauge-track: oklch(0.9 0 0); /* ring background */
+  --gauge-fill: var(--yes); /* donut uses the YES hue by default */
+  --yes-bg: oklch(0.93 0.07 160);
+  --yes-ink: oklch(0.28 0.06 160);
+  --yes-border: oklch(0.8 0.1 160);
+
+  --no-bg: oklch(0.95 0.08 23);
+  --no-ink: oklch(0.28 0.08 23);
+  --no-border: oklch(0.85 0.14 23);
 }
 
 .dark {
@@ -78,6 +94,14 @@
 
   /* Hover fill on dark */
   --accent: oklch(0.26 0 0); /* slightly lighter than card */
+  --accent: oklch(0.24 0 0); /* keep one accent value (you had a duplicate) */
+  /* MARKET semantics (dark) */
+  --yes: oklch(0.66 0.12 165);
+  --yes-fg: oklch(0.98 0.02 165);
+  --no: oklch(0.66 0.24 29);
+  --no-fg: oklch(1 0 0);
+  --gauge-track: oklch(0.28 0 0);
+  --gauge-fill: var(--yes);
   --accent-foreground: oklch(0.98 0 0);
 
   --destructive: oklch(0.7 0.19 22);
@@ -100,6 +124,13 @@
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+  --yes-bg: oklch(0.32 0.09 160);
+  --yes-ink: oklch(0.96 0.03 160);
+  --yes-border: oklch(0.48 0.12 160);
+
+  --no-bg: oklch(0.34 0.11 23);
+  --no-ink: oklch(0.98 0.04 23);
+  --no-border: oklch(0.5 0.16 23);
 }
 
 /* map tokens to Tailwind CSS custom properties */
@@ -140,6 +171,13 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  /* market tokens */
+  --color-yes: var(--yes);
+  --color-yes-fg: var(--yes-fg);
+  --color-no: var(--no);
+  --color-no-fg: var(--no-fg);
+  --color-gauge-track: var(--gauge-track);
+  --color-gauge-fill: var(--gauge-fill);
 }
 
 /* base layer */
@@ -149,5 +187,70 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Card shell */
+  .card {
+    @apply rounded-xl border bg-card shadow-sm;
+  }
+  .card:hover {
+    @apply border-primary/40;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply rounded-md border px-3 py-2.5 text-sm transition-colors;
+  }
+
+  .btn-yes {
+    background-color: var(--yes-bg);
+    color: var(--yes-ink);
+    border-color: color-mix(in oklch, var(--yes-bg) 0%, black 20%);
+  }
+  .btn-yes:hover {
+    background-color: color-mix(in oklch, var(--yes-bg) 85%, white 15%);
+  }
+  .dark .btn-yes {
+    border-color: var(--yes-border);
+  }
+  .dark .btn-yes:hover {
+    background-color: color-mix(in oklch, var(--yes-bg) 70%, white 30%);
+  }
+
+  .btn-no {
+    background-color: var(--no-bg);
+    color: var(--no-ink);
+    border-color: color-mix(in oklch, var(--no-bg) 0%, black 20%);
+  }
+  .btn-no:hover {
+    background-color: color-mix(in oklch, var(--no-bg) 85%, white 15%);
+  }
+  .dark .btn-no {
+    border-color: var(--no-border);
+  }
+  .dark .btn-no:hover {
+    background-color: color-mix(in oklch, var(--no-bg) 70%, white 30%);
+  }
+
+  /* Donut gauge */
+  .gauge {
+    position: relative;
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border-radius: 9999px;
+    background: conic-gradient(
+      hsl(var(--primary)) calc(var(--_p, 0) * 1%),
+      hsl(var(--muted-foreground)) 0
+    );
+  }
+  .gauge::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border-radius: inherit;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
   }
 }
