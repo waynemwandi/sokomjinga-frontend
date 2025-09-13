@@ -1,123 +1,12 @@
 <script lang="ts">
   import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
+  export let data: { isAuthed: boolean; markets: any[] };
+  let isAuthed = data.isAuthed;
 
-  // TODO: swap this for real data from +page.server.ts later
-  let isAuthed = false; // flip to true to see the small header delta
+  // let isAuthed = false; // flip to true to see the small header delta
   const categories = ["Trending","Breaking News","New","Politics","Sports","Kenya","Tanzania"];
   const tags = ["All","Ruto Presidency","Kenya vs Morocco","CHAN","Nairobi Governor","Juba", "Sudan"];
-  const markets = [
-    {
-      id: 'm1',
-      title: 'Will Ruto serve WANTAM?',
-      volume: 'KES 274,692 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 6 },
-        { label: 'No', pct: 94 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=WA'
-    },
-    {
-      id: 'm2',
-      title: 'Will Kenya win the 2024 AFCON?',
-      volume: 'KES 2m Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 80 },
-        { label: 'No', pct: 20 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=AF'
-    },
-    {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-        {
-      id: 'm2',
-      title: 'Would you support a coalition government?',
-      volume: 'KES 947,856 Vol.',
-      outcomes: [
-        { label: 'Yes', pct: 63 },
-        { label: 'No', pct: 37 },
-      ],
-      img: 'https://dummyimage.com/48x48/2e3440/ffffff&text=NY'
-    },
-    // ...add a few more for the grid
-  ];
+
 </script>
 
 <!-- Header -->
@@ -178,38 +67,35 @@
 
 <!-- Grid -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
-  <div
-    class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4"
-  >
-    {#each markets as m}
-      <article
-        class="group rounded-xl border border-border/70 bg-card/80 shadow-sm
-               hover:border-primary/40 transition-colors"
-      >
+  <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+    {#each data.markets as m}
+      <article class="group rounded-xl border border-border/70 bg-card/80 shadow-sm hover:border-primary/40 transition-colors">
         <!-- card header -->
         <div class="flex items-start gap-3 p-4 border-b border-border/60">
-          <img alt="" class="h-10 w-10 rounded bg-muted/50 object-cover" src={m.img} />
+          <div class="h-10 w-10 rounded bg-muted/50 flex items-center justify-center text-xs">
+            {m.title?.slice(0,2)?.toUpperCase() ?? 'MK'}
+          </div>
           <div class="min-w-0">
             <h3 class="text-sm font-medium leading-snug line-clamp-2">{m.title}</h3>
-            <div class="mt-1 text-xs text-muted-foreground">{m.volume}</div>
+            <div class="mt-1 text-xs text-muted-foreground">{m.status ?? 'open'}</div>
           </div>
           <div class="ml-auto opacity-60 group-hover:opacity-100 transition">⋯</div>
         </div>
 
-        <!-- outcomes -->
+        <!-- outcomes (optional) -->
         <div class="p-4 flex flex-col gap-3">
-          {#each m.outcomes as o}
-            <button
-              class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm
-                    hover:bg-accent hover:text-accent-foreground flex items-center justify-between"
-            >
-              <span>{o.label}</span>
-              <span class="font-semibold">{o.pct}%</span>
-            </button>
-          {/each}
+          {#if m.outcomes?.length}
+            {#each m.outcomes as o}
+              <button class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex items-center justify-between">
+                <span>{o.label}</span>
+                <span class="font-semibold">{o.pct}%</span>
+              </button>
+            {/each}
+          {:else}
+            <div class="text-xs text-muted-foreground">No outcomes yet.</div>
+          {/if}
         </div>
 
-        <!-- footer -->
         <div class="px-4 py-3 border-t border-border/60 text-xs text-muted-foreground">
           More details ▸
         </div>

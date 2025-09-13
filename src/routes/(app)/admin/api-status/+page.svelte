@@ -5,7 +5,8 @@
   let status: 'checking' | 'RUNNING' | 'DOWN' = 'checking';
   let data: any = null;
   let error: string | null = null;
-  const url = `${API_BASE}/health`;
+  // const url = `${API_BASE}/health`;
+  const url = `/health`;
 
   async function check() {
     status = 'checking';
@@ -27,7 +28,7 @@
 
 <div class="rounded-xl border border-border bg-card/80 p-4 space-y-3">
   <div class="text-sm">Health endpoint: <code>{url}</code></div>
-  <div class="text-sm">Status: <strong>{status === 'RUNNING' ? 'UP' : status === 'DOWN' ? 'DOWN' : 'checking...'}</strong></div>
+  <div class="text-sm">Status: <strong>{status === 'RUNNING' ? 'RUNNING' : status === 'DOWN' ? 'DOWN' : 'checking...'}</strong></div>
 
   {#if data}
     <pre class="text-xs overflow-x-auto p-3 rounded bg-neutral">{JSON.stringify(data, null, 2)}</pre>

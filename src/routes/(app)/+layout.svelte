@@ -5,15 +5,12 @@
   import { toggleTheme } from '$lib/theme';
   import { Sun, Moon, GalleryVerticalEndIcon } from 'lucide-svelte';
 
-  import { page } from '$app/stores';
+  import { page } from '$app/state';
 
-  $: pathname = $page.url.pathname;
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + '/');
 
-  const navClass = (href: string) =>
+  const navClass = (href: string, path: string) =>
     `block rounded px-3 py-2 transition-colors ${
-      isActive(href)
+      path === href || path.startsWith(href + '/')
         ? 'bg-accent/70 text-foreground'
         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
     }`;
@@ -53,37 +50,11 @@
         </div>
       <nav class="px-2 space-y-1 text-sm">
         <!-- Desktop Sidebar -->
-        <a
-          href="/admin/dashboard"
-          class={navClass('/admin/dashboard')}
-        >
-          Dashboard
-        </a>
-
-        <a
-          href="/admin/markets"
-          class={navClass('/admin/markets')}
-        >
-          Markets
-        </a>
-        <a
-          href="/admin/wallets"
-          class={navClass('/admin/wallets')}
-        >
-          Wallets
-        </a>
-        <a
-          href="/admin/reports"
-          class={navClass('/admin/reports')}
-        >
-          Reports
-        </a>
-        <a
-            href="/admin/api-status"
-          class={navClass('/admin/api-status')}
-          >
-            API Status
-        </a>
+        <a href="/admin/dashboard"  class={navClass('/admin/dashboard', page.url.pathname)}>Dashboard</a>
+        <a href="/admin/markets"    class={navClass('/admin/markets', page.url.pathname)}>Markets</a>
+        <a href="/admin/wallets"    class={navClass('/admin/wallets', page.url.pathname)}>Wallets</a>
+        <a href="/admin/reports"    class={navClass('/admin/reports', page.url.pathname)}>Reports</a>
+        <a href="/admin/api-status" class={navClass('/admin/api-status', page.url.pathname)}>API Status</a>
       </nav>
 
       <div class="absolute bottom-0 w-[280px] p-3 text-xs text-muted-foreground">
@@ -155,43 +126,11 @@
 
         <nav class="px-2 space-y-1 text-sm">
           <!-- Mobile Sidebar -->
-          <a
-            href="/admin/dashboard"
-            class={navClass('/admin/dashboard')}          
-            on:click={() => (sidebarOpen = false)}
-          >
-            Dashboard
-          </a>
-
-          <a
-            href="/admin/markets"
-            class={navClass('/admin/markets')}          
-            on:click={() => (sidebarOpen = false)}
-          >
-            Markets
-          </a>
-          <a
-            href="/admin/wallets"
-            class={navClass('/admin/wallets')}          
-            on:click={() => (sidebarOpen = false)}
-          >
-            Wallets
-          </a>
-          <a
-            href="/admin/reports"
-            class={navClass('/admin/reports')}          
-            on:click={() => (sidebarOpen = false)}
-          >
-            Reports
-          </a>
-
-          <a
-            href="/admin/api-status"
-            class={navClass('/admin/api-status')}          
-            on:click={() => (sidebarOpen = false)}
-          >
-            API Status
-          </a>
+          <a href="/admin/dashboard"  class={navClass('/admin/dashboard', page.url.pathname)}>Dashboard</a>
+          <a href="/admin/markets"    class={navClass('/admin/markets', page.url.pathname)}>Markets</a>
+          <a href="/admin/wallets"    class={navClass('/admin/wallets', page.url.pathname)}>Wallets</a>
+          <a href="/admin/reports"    class={navClass('/admin/reports', page.url.pathname)}>Reports</a>
+          <a href="/admin/api-status" class={navClass('/admin/api-status', page.url.pathname)}>API Status</a>
 
         </nav>
       </div>
