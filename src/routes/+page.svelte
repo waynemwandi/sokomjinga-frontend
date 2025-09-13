@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { toggleTheme } from '$lib/theme';
   import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
+  import { Sun, Moon, ChartNoAxesCombined } from 'lucide-svelte';
   export let data: { isAuthed: boolean; markets: any[] };
   let isAuthed = data.isAuthed;
 
@@ -14,7 +16,8 @@
   <div class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-[64px] flex items-center gap-3">
     <a href="/" class="inline-flex items-center gap-2">
       <span class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground h-7 w-7">
-        <GalleryVerticalEndIcon class="h-4 w-4" />
+        <!-- <GalleryVerticalEndIcon class="h-4 w-4" /> -->
+        <ChartNoAxesCombined class="h-4 w-4" />
       </span>
       <span class="font-semibold">SokoMjinga</span>
     </a>
@@ -28,6 +31,18 @@
         />
       </div>
     </div>
+
+    <!-- Theme Toggle -->
+    <div class="ml-auto flex items-center gap-2">
+          <button
+            class="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-input hover:bg-card transition"
+            on:click={toggleTheme}
+            aria-label="Toggle theme"
+          >
+            <Sun class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </button>
+        </div>
 
     <!-- right actions -->
     {#if isAuthed}

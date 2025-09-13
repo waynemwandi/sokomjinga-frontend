@@ -3,7 +3,8 @@
   const SIDEBAR_W = '280px';
 
   import { toggleTheme } from '$lib/theme';
-  import { Sun, Moon, GalleryVerticalEndIcon } from 'lucide-svelte';
+  import { Sun, Moon, GalleryVerticalEndIcon, ChartNoAxesCombined } from 'lucide-svelte';
+
 
   import { page } from '$app/state';
 
@@ -44,7 +45,8 @@
     <aside class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-card/60 backdrop-blur">
       <div class="flex items-center gap-2 p-4">
           <div class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <GalleryVerticalEndIcon class="size-4" />
+            <!-- <GalleryVerticalEndIcon class="size-4" /> -->
+             <ChartNoAxesCombined class="size-4" />
           </div>
           <span class="text-sm font-semibold">SokoMjinga</span>
         </div>
@@ -111,7 +113,8 @@
         <div class="p-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
               <div class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <GalleryVerticalEndIcon class="size-4" />
+                <!-- <GalleryVerticalEndIcon class="size-4" /> -->
+                <ChartNoAxesCombined class="size-4" />
               </div>
               <span class="text-sm font-semibold">SokoMjinga</span>
           </div>        
