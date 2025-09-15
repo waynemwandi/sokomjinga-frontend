@@ -5,7 +5,7 @@
   import { LogIn, UserRound } from 'lucide-svelte';
   export let data: { isAuthed: boolean; markets: any[] };
   // let isAuthed = data.isAuthed;
-  let isAuthed = true; // swap for data.isAuthed
+  let isAuthed = false; // swap for data.isAuthed
 
   // let isAuthed = false; // flip to true to see the small header delta
   const categories = ["Trending","Breaking News","New","Politics","Sports","Kenya","Tanzania"];
