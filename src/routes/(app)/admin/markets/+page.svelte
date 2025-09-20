@@ -179,16 +179,19 @@
 {#if showCreate}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="presentation"
     on:click={() => (showCreate = false)}
+    on:keydown={(e) => e.key === "Escape" && (showCreate = false)}
+    tabindex="0"
   >
     <div class="absolute inset-0 bg-foreground/50"></div>
-
     <div
       class="relative w-full max-w-lg rounded-xl border border-border bg-card p-4 shadow-xl"
-      on:click|stopPropagation
       role="dialog"
       aria-modal="true"
       aria-label="Create Market"
+      on:click|stopPropagation
+      tabindex="0"
     >
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-base font-semibold">Create Market</h2>
@@ -217,7 +220,7 @@
             rows="4"
             class="w-full rounded-md bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Optional context, resolution criteria, timeline…"
-          />
+          ></textarea>
         </label>
       </div>
 
