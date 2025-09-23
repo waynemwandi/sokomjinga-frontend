@@ -1,23 +1,23 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { getJSON, API_BASE } from '$lib/api';
+  import { onMount } from "svelte";
+  import { getJSON, API_BASE } from "$lib/api";
 
-  let status: 'checking' | 'RUNNING' | 'DOWN' = 'checking';
+  let status: "checking" | "RUNNING" | "DOWN" = "checking";
   let data: any = null;
   let error: string | null = null;
   // const url = `${API_BASE}/health`;
   const url = `/health`;
 
   async function check() {
-    status = 'checking';
+    status = "checking";
     data = null;
     error = null;
     try {
-      data = await getJSON('/health');   // browser → CORS path
-      status = 'RUNNING';
+      data = await getJSON("/health"); // browser → CORS path
+      status = "RUNNING";
     } catch (e) {
       error = String(e);
-      status = 'DOWN';
+      status = "DOWN";
     }
   }
 
@@ -28,16 +28,30 @@
 
 <div class="rounded-xl border border-border bg-card/80 p-4 space-y-3">
   <div class="text-sm">Health endpoint: <code>{url}</code></div>
-  <div class="text-sm">Status: <strong>{status === 'RUNNING' ? 'RUNNING' : status === 'DOWN' ? 'DOWN' : 'checking...'}</strong></div>
+  <div class="text-sm">
+    Status: <strong
+      >{status === "RUNNING"
+        ? "RUNNING"
+        : status === "DOWN"
+          ? "DOWN"
+          : "checking..."}</strong
+    >
+  </div>
 
   {#if data}
-    <pre class="text-xs overflow-x-auto p-3 rounded bg-neutral">{JSON.stringify(data, null, 2)}</pre>
+    <pre class="text-xs overflow-x-auto p-3 rounded bg-neutral">{JSON.stringify(
+        data,
+        null,
+        2
+      )}</pre>
   {:else if error}
     <pre class="text-xs overflow-x-auto p-3 rounded bg-neutral">{error}</pre>
   {/if}
 
-  <button class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition"
-          on:click={check}>
+  <button
+    class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition"
+    on:click={check}
+  >
     Recheck
   </button>
 </div>

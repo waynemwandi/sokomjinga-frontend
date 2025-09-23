@@ -1,27 +1,30 @@
 <script lang="ts">
   let sidebarOpen = false;
-  const SIDEBAR_W = '280px';
+  const SIDEBAR_W = "280px";
 
-  import { toggleTheme } from '$lib/theme';
-  import { Sun, Moon, GalleryVerticalEndIcon, ChartNoAxesCombined } from 'lucide-svelte';
+  import { toggleTheme } from "$lib/theme";
+  import {
+    Sun,
+    Moon,
+    GalleryVerticalEndIcon,
+    ChartNoAxesCombined,
+  } from "lucide-svelte";
 
-
-  import { page } from '$app/state';
-
+  import { page } from "$app/state";
 
   const navClass = (href: string, path: string) =>
     `block rounded px-3 py-2 transition-colors ${
-      path === href || path.startsWith(href + '/')
-        ? 'bg-accent/70 text-foreground'
-        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+      path === href || path.startsWith(href + "/")
+        ? "bg-accent/70 text-foreground"
+        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     }`;
-
 </script>
-
 
 <div class="min-h-screen bg-background text-foreground">
   <!-- Mobile header (shows sidebar toggle) -->
-  <header class="md:hidden sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur">
+  <header
+    class="md:hidden sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur"
+  >
     <div class="h-14 flex items-center gap-3 px-4">
       <button
         class="rounded-md bg-neutral px-3 py-1.5 text-sm"
@@ -42,32 +45,56 @@
     style={`grid-template-columns:${SIDEBAR_W} 1fr; grid-template-rows: 56px auto;`}
   >
     <!-- Sidebar (desktop) -->
-    <aside class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-card/60 backdrop-blur">
+    <aside
+      class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-card/60 backdrop-blur"
+    >
       <div class="flex items-center gap-2 p-4">
-          <div class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <!-- <GalleryVerticalEndIcon class="size-4" /> -->
-             <ChartNoAxesCombined class="size-4" />
-          </div>
-          <span class="text-sm font-semibold">SokoMjinga</span>
+        <div
+          class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
+        >
+          <!-- <GalleryVerticalEndIcon class="size-4" /> -->
+          <ChartNoAxesCombined class="size-4" />
         </div>
+        <span class="text-sm font-semibold">SokoMjinga</span>
+      </div>
       <nav class="px-2 space-y-1 text-sm">
         <!-- Desktop Sidebar -->
-        <a href="/admin/dashboard"  class={navClass('/admin/dashboard', page.url.pathname)}>Dashboard</a>
-        <a href="/admin/markets"    class={navClass('/admin/markets', page.url.pathname)}>Markets</a>
-        <a href="/admin/wallets"    class={navClass('/admin/wallets', page.url.pathname)}>Wallets</a>
-        <a href="/admin/reports"    class={navClass('/admin/reports', page.url.pathname)}>Reports</a>
-        <a href="/admin/api-status" class={navClass('/admin/api-status', page.url.pathname)}>API Status</a>
+        <a
+          href="/admin/dashboard"
+          class={navClass("/admin/dashboard", page.url.pathname)}>Dashboard</a
+        >
+        <a
+          href="/admin/markets"
+          class={navClass("/admin/markets", page.url.pathname)}>Markets</a
+        >
+        <a
+          href="/admin/wallets"
+          class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
+        >
+        <a
+          href="/admin/reports"
+          class={navClass("/admin/reports", page.url.pathname)}>Reports</a
+        >
+        <a
+          href="/admin/api-status"
+          class={navClass("/admin/api-status", page.url.pathname)}>API Status</a
+        >
       </nav>
 
-      <div class="absolute bottom-0 w-[280px] p-3 text-xs text-muted-foreground">
+      <div
+        class="absolute bottom-0 w-[280px] p-3 text-xs text-muted-foreground"
+      >
         mwandiwayne@gmail.com
       </div>
     </aside>
 
-
     <!-- Header (desktop) -->
-    <header class="hidden md:flex col-start-2 col-end-3 items-center border-b border-border bg-card/40 backdrop-blur">  
-      <div class="mx-auto w-full max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1800px] px-4 xl:px-6 2xl:px-8 h-14 flex items-center gap-3">
+    <header
+      class="hidden md:flex col-start-2 col-end-3 items-center border-b border-border bg-card/40 backdrop-blur"
+    >
+      <div
+        class="mx-auto w-full max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1800px] px-4 xl:px-6 2xl:px-8 h-14 flex items-center gap-3"
+      >
         <div class="text-sm text-muted-foreground">Admin Dashboard</div>
         <div class="ml-auto flex items-center gap-2">
           <button
@@ -75,14 +102,22 @@
             on:click={toggleTheme}
             aria-label="Toggle theme"
           >
-            <Sun class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <Sun
+              class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
+            />
+            <Moon
+              class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
+            />
           </button>
           <input
             class="w-72 rounded-md bg-input px-3 py-1.5 text-sm placeholder-neutral focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Search..."
           />
-          <a href="/" class="text-xs text-muted-foreground hover:text-foreground">My Account</a>
+          <a
+            href="/"
+            class="text-xs text-muted-foreground hover:text-foreground"
+            >My Account</a
+          >
           <div class="h-7 w-7 rounded-full bg-input"></div>
         </div>
       </div>
@@ -90,21 +125,23 @@
 
     <!-- Main -->
     <main class="col-start-1 md:col-start-2 col-end-3">
-      <div class="mx-auto w-full max-w-[100%] px-4 py-6 md:max-w-[1400px] lg:max-w-[1600px] 2xl:max-w-[1800px] md:px-6 xl:px-8 2xl:px-10">
+      <div
+        class="mx-auto w-full max-w-[100%] px-4 py-6 md:max-w-[1400px] lg:max-w-[1600px] 2xl:max-w-[1800px] md:px-6 xl:px-8 2xl:px-10"
+      >
         <slot />
       </div>
     </main>
   </div>
 
   <!-- Mobile drawer -->
-    {#if sidebarOpen}
+  {#if sidebarOpen}
     <div
       class="fixed inset-0 z-50 flex"
       on:click={() => (sidebarOpen = false)}
       aria-hidden="true"
     >
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <!-- svelte-ignore a11y_click_events_have_key_events -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
       <!-- Drawer panel -->
       <div
         class="w-[72%] max-w-[320px] h-full border-r border-border bg-card"
@@ -112,13 +149,15 @@
       >
         <div class="p-4 flex items-center justify-between">
           <div class="flex items-center gap-2">
-              <div class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-                <!-- <GalleryVerticalEndIcon class="size-4" /> -->
-                <ChartNoAxesCombined class="size-4" />
-              </div>
-              <span class="text-sm font-semibold">SokoMjinga</span>
-          </div>        
-          
+            <div
+              class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
+            >
+              <!-- <GalleryVerticalEndIcon class="size-4" /> -->
+              <ChartNoAxesCombined class="size-4" />
+            </div>
+            <span class="text-sm font-semibold">SokoMjinga</span>
+          </div>
+
           <button
             class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition-colors"
             on:click={() => (sidebarOpen = false)}
@@ -129,19 +168,32 @@
 
         <nav class="px-2 space-y-1 text-sm">
           <!-- Mobile Sidebar -->
-          <a href="/admin/dashboard"  class={navClass('/admin/dashboard', page.url.pathname)}>Dashboard</a>
-          <a href="/admin/markets"    class={navClass('/admin/markets', page.url.pathname)}>Markets</a>
-          <a href="/admin/wallets"    class={navClass('/admin/wallets', page.url.pathname)}>Wallets</a>
-          <a href="/admin/reports"    class={navClass('/admin/reports', page.url.pathname)}>Reports</a>
-          <a href="/admin/api-status" class={navClass('/admin/api-status', page.url.pathname)}>API Status</a>
-
+          <a
+            href="/admin/dashboard"
+            class={navClass("/admin/dashboard", page.url.pathname)}>Dashboard</a
+          >
+          <a
+            href="/admin/markets"
+            class={navClass("/admin/markets", page.url.pathname)}>Markets</a
+          >
+          <a
+            href="/admin/wallets"
+            class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
+          >
+          <a
+            href="/admin/reports"
+            class={navClass("/admin/reports", page.url.pathname)}>Reports</a
+          >
+          <a
+            href="/admin/api-status"
+            class={navClass("/admin/api-status", page.url.pathname)}
+            >API Status</a
+          >
         </nav>
       </div>
 
       <!-- Scrim -->
       <div class="flex-1 bg-foreground/50"></div>
-      
     </div>
   {/if}
-
 </div>
