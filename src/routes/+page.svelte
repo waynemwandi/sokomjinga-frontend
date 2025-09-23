@@ -1,6 +1,5 @@
 <script lang="ts">
   import { toggleTheme } from "$lib/theme";
-  import GalleryVerticalEndIcon from "@lucide/svelte/icons/gallery-vertical-end";
   import { Sun, Moon, ChartNoAxesCombined } from "lucide-svelte";
   import { LogIn, UserRound } from "lucide-svelte";
   export let data: { isAuthed: boolean; markets: any[] };
@@ -276,7 +275,11 @@
             <div
               class="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity"
             >
-              <!-- <button class="p-1 rounded hover:bg-accent" on:click|preventDefault aria-label="Gift"><Gift class="h-4 w-4" /></button> -->
+              <button
+                class="p-1 rounded hover:bg-accent"
+                on:click|preventDefault
+                aria-label="Gift"><Gift class="h-4 w-4" /></button
+              >
               <button
                 class="p-1 rounded hover:bg-accent"
                 on:click={goLogin}
