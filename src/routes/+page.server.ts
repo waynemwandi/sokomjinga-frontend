@@ -1,19 +1,25 @@
 // src/routes/+page.server.ts
 import type { PageServerLoad } from "./$types";
-import { PUBLIC_API_BASE } from "$env/static/public";
+import { env as pub } from "$env/dynamic/public";
+import { env as priv } from "$env/dynamic/private";
 
-export const load: PageServerLoad = async ({ fetch }) => {
-  // TODO: Auth
-  const isAuthed = false;
-  const base = (PUBLIC_API_BASE ?? "").trim().replace(/\/$/, "");
-  const url = base ? `${base}/markets` : "/markets";
+const join = (a: string, b: string) =>
+  `${a.replace(/\/$/, "")}/${b.replace(/^\//, "")}`;
 
-  let markets: any[] = [];
-  try {
-    const res = await fetch(url);
-    if (res.ok) markets = await res.json();
-  } catch (e) {
-    console.error("load(/) markets failed:", e);
-  }
+export const load: PageServerLoad = async () => {
+  // Prefer container-to-container URL for SSR; fall back to public if set absolute
+  const serverBase =
+    priv.PRIVATE_API_BASE ||
+    (pub.PUBLIC_API_BASE?.startsWith("/")
+      ? "http://api:8000"
+      : pub.PUBLIC_API_BASE || "http://api:8000");
+
+  const res = await fetch(join(serverBase, "/markets"), {
+    headers: { accept: "application/json" },
+  });
+  if (!res.ok)
+    throw new Error(`GET /markets failed: ${res.status} ${res.statusText}`);
+
+  const markets = await res.json();
   return { isAuthed: false, markets };
 };
