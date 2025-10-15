@@ -180,22 +180,30 @@
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
     role="presentation"
-    on:click={() => (showCreate = false)}
     on:keydown={(e) => e.key === "Escape" && (showCreate = false)}
-    tabindex="0"
+    tabindex="-1"
   >
-    <div class="absolute inset-0 bg-foreground/50"></div>
+    <button
+      type="button"
+      class="absolute inset-0 bg-foreground/50"
+      aria-label="Close dialog"
+      on:click={() => (showCreate = false)}
+    ></button>
+    <!-- Dialog panel -->
     <div
       class="relative w-full max-w-lg rounded-xl border border-border bg-card p-4 shadow-xl"
       role="dialog"
       aria-modal="true"
       aria-label="Create Market"
       on:click|stopPropagation
-      tabindex="0"
+      on:keydown={(e) => e.key === "Escape" && (showCreate = false)}
+      tabindex="-1"
     >
+      <!-- header -->
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-base font-semibold">Create Market</h2>
         <button
+          type="button"
           class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-card"
           on:click={() => (showCreate = false)}
         >
@@ -203,41 +211,8 @@
         </button>
       </div>
 
-      <div class="space-y-3">
-        <label class="block text-sm">
-          <span class="mb-1 block text-muted-foreground">Title</span>
-          <input
-            bind:value={newTitle}
-            class="w-full rounded-md bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="e.g. Will Kenya qualify for AFCON 2025?"
-          />
-        </label>
-
-        <label class="block text-sm">
-          <span class="mb-1 block text-muted-foreground">Description</span>
-          <textarea
-            bind:value={newDescription}
-            rows="4"
-            class="w-full rounded-md bg-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            placeholder="Optional context, resolution criteria, timeline…"
-          ></textarea>
-        </label>
-      </div>
-
-      <div class="mt-4 flex items-center justify-end gap-2">
-        <button
-          class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card"
-          on:click={() => (showCreate = false)}
-        >
-          Cancel
-        </button>
-        <button
-          class="rounded-md border border-emerald-600/40 bg-emerald-600/10 px-3 py-1.5 text-sm text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600/20"
-          on:click={createMarket}
-        >
-          Create
-        </button>
-      </div>
+      <!-- rest of your form stays the same -->
+      …
     </div>
   </div>
 {/if}

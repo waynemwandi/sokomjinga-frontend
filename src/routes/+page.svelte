@@ -70,7 +70,6 @@
       <span
         class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground h-7 w-7"
       >
-        <!-- <GalleryVerticalEndIcon class="h-4 w-4" /> -->
         <ChartNoAxesCombined class="h-4 w-4" />
       </span>
       <span class="font-semibold">SokoMjinga</span>
