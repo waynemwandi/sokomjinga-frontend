@@ -1,156 +1,153 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { PUBLIC_API_BASE } from "$env/static/public"; // optional; falls back if not set
+  import { Markets } from "$lib/api"; // ← use our helper
 
-  type Outcome = {
-    id: number;
-    label: string; // e.g. "Yes" / "No"
-    probability?: number; // optional
-  };
-
+  type Outcome = { id: string; label: string; probability?: number };
   type Market = {
-    id: number;
+    id: string;
     title: string;
+    image_url?: string | null;
+    category?: string | null;
+    description?: string | null;
     status?: "open" | "closed" | "settled";
     created_at?: string;
     updated_at?: string;
-    // add any UI fields you added in DB (safe to ignore if not present)
     outcomes?: Outcome[];
-    // any other fields from your API are fine; extra fields are ignored by TS
     [key: string]: unknown;
   };
 
   let showCreate = false;
   let newTitle = "";
   let newDescription = "";
+  let newImageUrl = "";
+  let newCategory = "";
   let markets: Market[] = [];
   let loading = true;
   let error: string | null = null;
 
-  // basic UI state
-  let q = ""; // quick filter
+  let q = "";
   let onlyOpen = false;
-
-  // Derive the endpoint. Prefer PUBLIC_API_BASE if present, else try relative.
-  const base = PUBLIC_API_BASE?.replace(/\/+$/, "") || "";
-  // Prefer /api/markets, but if your API is mounted at /markets, adjust the second option.
-  const endpointCandidates = [`${base}/markets`];
 
   async function fetchMarkets() {
     loading = true;
     error = null;
-
-    for (const url of endpointCandidates) {
-      try {
-        const res = await fetch(url, {
-          headers: { accept: "application/json" },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        // Expect array; if your API nests under {data: [...]}, adapt here.
-        markets = Array.isArray(data) ? data : (data?.data ?? []);
-        loading = false;
-        return;
-      } catch (e) {
-        // try next candidate
-      }
+    try {
+      markets = await Markets.list();
+    } catch (e: any) {
+      error = e?.message || "Failed to load markets";
+    } finally {
+      loading = false;
     }
-
-    loading = false;
-    error = "Failed to load markets from /markets. Check API base or CORS.";
   }
 
   onMount(fetchMarkets);
 
-  // —— Actions (static stubs for now) ——
-  function onEdit(m: Market) {
-    // TODO: navigate to /admin/markets/{id}/edit or open a modal
-    console.log("edit", m.id);
-    alert(`Edit market #${m.id} (TODO)`);
-  }
-
   async function onClose(m: Market) {
-    // TODO: call PATCH /markets/:id { status: 'closed' } then refresh
     const ok = confirm(
       `Close market “${m.title}”? This will prevent further trading.`
     );
     if (!ok) return;
-    console.log("close", m.id);
-    alert(`Close market #${m.id} (TODO API call)`);
-    // await fetch(`${base}/api/markets/${m.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) })
-    // await fetchMarkets();
+    try {
+      await Markets.close(m.id);
+      await fetchMarkets();
+    } catch (e: any) {
+      alert(e?.message || "Close failed");
+    }
   }
 
   async function onDelete(m: Market) {
-    // TODO: call DELETE /markets/:id then refresh
     const ok = confirm(
       `Delete market “${m.title}”? This action cannot be undone.`
     );
     if (!ok) return;
-    console.log("delete", m.id);
-    alert(`Delete market #${m.id} (TODO API call)`);
-    // await fetch(`${base}/api/markets/${m.id}`, { method: 'DELETE' })
-    // await fetchMarkets();
+    try {
+      await Markets.del(m.id);
+      await fetchMarkets();
+    } catch (e: any) {
+      alert(e?.message || "Delete failed");
+    }
   }
 
-  // —— Filtering (client-side) ——
+  async function createMarket() {
+    if (!newTitle.trim()) {
+      alert("Title is required");
+      return;
+    }
+    try {
+      await Markets.create({
+        title: newTitle.trim(),
+        description: newDescription.trim() || null,
+        image_url: newImageUrl.trim() || null, // ← new
+        category: newCategory.trim() || null, // ← new
+        status: "open",
+      });
+      showCreate = false;
+      newTitle = "";
+      newDescription = "";
+      newImageUrl = ""; // ← reset
+      newCategory = ""; // ← reset
+      await fetchMarkets();
+    } catch (e: any) {
+      alert(e?.message || "Create failed");
+    }
+  }
+
   $: filtered = markets
     .filter((m) => (onlyOpen ? (m.status ?? "open") === "open" : true))
     .filter((m) =>
       q ? m.title?.toLowerCase().includes(q.toLowerCase()) : true
     );
 
-  // —— Create Market ——
-  async function createMarket() {
-    if (!newTitle.trim()) {
-      alert("Title is required");
-      return;
-    }
-    const body = {
-      title: newTitle.trim(),
-      description: newDescription.trim() || null,
-      status: "open",
-    };
+  let editOpen = false;
+  let edit: Market | null = null;
+  let editTitle = "";
+  let editDescription = "";
+  let editImageUrl = "";
+  let editCategory = "";
 
-    let created = false;
-    for (const baseUrl of endpointCandidates) {
-      try {
-        const res = await fetch(baseUrl, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            accept: "application/json",
-          },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        created = true;
-        break;
-      } catch {}
-    }
-    if (!created) {
-      alert("Failed to create market. Check API route and CORS.");
-      return;
-    }
+  function onEdit(m: Market) {
+    edit = m;
+    editTitle = m.title ?? "";
+    editDescription = (m.description as string) ?? "";
+    editImageUrl = (m.image_url as string) ?? "";
+    editCategory = (m.category as string) ?? "";
+    editOpen = true;
+  }
 
-    showCreate = false;
-    newTitle = "";
-    newDescription = "";
-    await fetchMarkets();
+  async function updateMarket() {
+    if (!edit) return;
+    try {
+      await Markets.update(edit.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        image_url: editImageUrl.trim() || null,
+        category: editCategory.trim() || null,
+      });
+      editOpen = false;
+      edit = null;
+      await fetchMarkets();
+    } catch (e: any) {
+      alert(e?.message || "Update failed");
+    }
   }
 </script>
 
-<!-- Header row -->
+<!-- ===========================
+  Header Row
+=========================== -->
 <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
   <h1 class="text-xl font-semibold mb-4">Markets</h1>
 
   <div class="ml-0 md:ml-auto flex w-full md:w-auto items-center gap-2">
+    <!-- Search -->
     <input
       bind:value={q}
       placeholder="Search markets…"
       class="w-full md:w-75 rounded-md bg-input px-3 py-1.5 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
       aria-label="Search markets"
     />
+
+    <!-- Only open checkbox -->
     <label class="inline-flex items-center gap-2 text-sm">
       <input
         type="checkbox"
@@ -159,6 +156,8 @@
       />
       Only open
     </label>
+
+    <!-- Refresh button -->
     <button
       class="rounded-md border border-border bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 transition"
       on:click={fetchMarkets}
@@ -166,6 +165,7 @@
     >
       Refresh
     </button>
+
     <!-- New Market -->
     <button
       class="rounded-md border border-border bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 transition"
@@ -176,6 +176,9 @@
   </div>
 </div>
 
+<!-- ===========================
+  Create Market Modal
+=========================== -->
 {#if showCreate}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -189,17 +192,16 @@
       aria-label="Close dialog"
       on:click={() => (showCreate = false)}
     ></button>
-    <!-- Dialog panel -->
+
     <div
-      class="relative w-full max-w-lg rounded-xl border border-border bg-card p-4 shadow-xl"
+      class="relative w-full max-w-3xl rounded-xl border border-border bg-card p-4 shadow-xl"
       role="dialog"
       aria-modal="true"
       aria-label="Create Market"
       on:click|stopPropagation
-      on:keydown={(e) => e.key === "Escape" && (showCreate = false)}
       tabindex="-1"
     >
-      <!-- header -->
+      <!-- Modal header -->
       <div class="mb-3 flex items-center justify-between">
         <h2 class="text-base font-semibold">Create Market</h2>
         <button
@@ -211,13 +213,242 @@
         </button>
       </div>
 
-      <!-- rest of your form stays the same -->
-      …
+      <!-- Modal form -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <!-- Left: fields -->
+        <div class="space-y-3">
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Title *</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={newTitle}
+              placeholder="e.g. Will BTC close above $100k by year-end?"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Category</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={newCategory}
+              placeholder="e.g. Politics, Sports, Markets, Tech"
+              list="market-categories"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Description</label>
+            <textarea
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              rows="4"
+              bind:value={newDescription}
+              placeholder="Optional context shown to traders"
+            ></textarea>
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Image URL</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={newImageUrl}
+              placeholder="https://…"
+            />
+          </div>
+        </div>
+
+        <!-- Right: preview -->
+        <div class="rounded-lg border border-border bg-muted/30 p-3">
+          <div class="text-xs mb-2 text-muted-foreground">Preview</div>
+          <div class="rounded-lg overflow-hidden border border-border bg-card">
+            {#if newImageUrl.trim()}
+              <img
+                src={newImageUrl}
+                alt="Market image preview"
+                class="h-40 w-full object-cover"
+                on:error={(e) =>
+                  ((e.currentTarget as HTMLImageElement).style.display =
+                    "none")}
+              />
+            {/if}
+            <div class="p-3 space-y-1.5">
+              <div class="text-sm font-medium">
+                {newTitle || "Untitled market"}
+              </div>
+              {#if newCategory}
+                <span
+                  class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs bg-primary/10 text-primary"
+                >
+                  {newCategory}
+                </span>
+              {/if}
+              {#if newDescription}
+                <p class="text-xs text-muted-foreground line-clamp-3">
+                  {newDescription}
+                </p>
+              {/if}
+            </div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card"
+            on:click={() => (showCreate = false)}
+          >
+            Cancel
+          </button>
+          <button
+            class="rounded-md border border-border bg-primary/20 px-3 py-1.5 text-sm text-primary hover:bg-primary/30 disabled:opacity-50"
+            on:click={createMarket}
+            disabled={!newTitle.trim()}
+          >
+            Create
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 {/if}
 
-<!-- Body states -->
+<!-- ===========================
+  Edit Market Modal
+=========================== -->
+{#if editOpen && edit}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="presentation"
+    on:keydown={(e) => e.key === "Escape" && (editOpen = false)}
+    tabindex="-1"
+  >
+    <button
+      type="button"
+      class="absolute inset-0 bg-foreground/50"
+      aria-label="Close dialog"
+      on:click={() => (editOpen = false)}
+    ></button>
+
+    <div
+      class="relative w-full max-w-3xl rounded-xl border border-border bg-card p-4 shadow-xl"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit Market"
+      on:click|stopPropagation
+      tabindex="-1"
+    >
+      <!-- Modal header -->
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-base font-semibold">Edit Market</h2>
+        <button
+          type="button"
+          class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-card"
+          on:click={() => (editOpen = false)}
+        >
+          Close
+        </button>
+      </div>
+
+      <!-- Modal form -->
+      <div class="grid gap-4 md:grid-cols-2">
+        <!-- Left: fields -->
+        <div class="space-y-3">
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Title *</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={editTitle}
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Category</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={editCategory}
+              list="market-categories"
+              placeholder="e.g. Politics, Sports, Markets, Tech"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Description</label>
+            <textarea
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              rows="4"
+              bind:value={editDescription}
+            ></textarea>
+          </div>
+
+          <div class="grid gap-1.5">
+            <label class="text-xs text-muted-foreground">Image URL</label>
+            <input
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={editImageUrl}
+              placeholder="https://…"
+            />
+          </div>
+        </div>
+
+        <!-- Right: preview -->
+        <div class="rounded-lg border border-border bg-muted/30 p-3">
+          <div class="text-xs mb-2 text-muted-foreground">Preview</div>
+          <div class="rounded-lg overflow-hidden border border-border bg-card">
+            {#if editImageUrl.trim()}
+              <img
+                src={editImageUrl}
+                alt="Market image preview"
+                class="h-40 w-full object-cover"
+                on:error={(e) =>
+                  ((e.currentTarget as HTMLImageElement).style.display =
+                    "none")}
+              />
+            {/if}
+            <div class="p-3 space-y-1.5">
+              <div class="text-sm font-medium">
+                {editTitle || "Untitled market"}
+              </div>
+              {#if editCategory}
+                <span
+                  class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs bg-primary/10 text-primary"
+                >
+                  {editCategory}
+                </span>
+              {/if}
+              {#if editDescription}
+                <p class="text-xs text-muted-foreground line-clamp-3">
+                  {editDescription}
+                </p>
+              {/if}
+            </div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card"
+            on:click={() => (editOpen = false)}
+          >
+            Cancel
+          </button>
+          <button
+            class="rounded-md border border-border bg-primary/20 px-3 py-1.5 text-sm text-primary hover:bg-primary/30 disabled:opacity-50"
+            on:click={updateMarket}
+            disabled={!editTitle.trim()}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ===========================
+  Body States / Market Table
+=========================== -->
 {#if loading}
   <div class="text-sm text-muted-foreground">Loading markets…</div>
 {:else if error}
@@ -229,7 +460,6 @@
     <table class="min-w-full text-sm">
       <thead class="bg-card/60">
         <tr class="text-left">
-          <!-- <th class="px-3 py-2 font-medium">ID</th> -->
           <th class="px-3 py-2 font-medium">Title</th>
           <th class="px-3 py-2 font-medium">Status</th>
           <th class="px-3 py-2 font-medium">Outcomes</th>
@@ -238,18 +468,25 @@
           <th class="px-3 py-2 font-medium text-right">Actions</th>
         </tr>
       </thead>
+
       <tbody>
         {#each filtered as m (m.id)}
           <tr class="border-t border-border">
-            <!-- <td class="px-3 py-2 align-top">{m.id}</td> -->
             <td class="px-3 py-2 align-top">
               <div class="font-medium">{m.title}</div>
+              {#if m.category}
+                <span
+                  class="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded"
+                  >{m.category}</span
+                >
+              {/if}
               {#if m.description}
                 <div class="mt-0.5 text-xs text-muted-foreground line-clamp-2">
                   {m.description as string}
                 </div>
               {/if}
             </td>
+
             <td class="px-3 py-2 align-top">
               <span
                 class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs
@@ -266,6 +503,7 @@
                 {m.status ?? "open"}
               </span>
             </td>
+
             <td class="px-3 py-2 align-top">
               {#if m.outcomes?.length}
                 <div class="flex flex-wrap gap-1">
@@ -283,20 +521,23 @@
                 <span class="text-xs text-muted-foreground">—</span>
               {/if}
             </td>
+
             <td class="px-3 py-2 align-top">
-              <time class="text-xs text-muted-foreground"
-                >{m.created_at
+              <time class="text-xs text-muted-foreground">
+                {m.created_at
                   ? new Date(m.created_at as string).toLocaleString()
-                  : "—"}</time
-              >
+                  : "—"}
+              </time>
             </td>
+
             <td class="px-3 py-2 align-top">
-              <time class="text-xs text-muted-foreground"
-                >{m.updated_at
+              <time class="text-xs text-muted-foreground">
+                {m.updated_at
                   ? new Date(m.updated_at as string).toLocaleString()
-                  : "—"}</time
-              >
+                  : "—"}
+              </time>
             </td>
+
             <td class="px-3 py-2 align-top">
               <div class="flex justify-end gap-2">
                 <button
@@ -309,9 +550,6 @@
                   class="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
                   on:click={() => onClose(m)}
                   disabled={(m.status ?? "open") !== "open"}
-                  title={(m.status ?? "open") !== "open"
-                    ? "Only open markets can be closed"
-                    : "Close market"}
                 >
                   Close
                 </button>
@@ -329,3 +567,15 @@
     </table>
   </div>
 {/if}
+
+<!-- ===========================
+  Shared Category Options
+=========================== -->
+<datalist id="market-categories">
+  <option value="Politics" />
+  <option value="Sports" />
+  <option value="Markets" />
+  <option value="Tech" />
+  <option value="World" />
+  <option value="Culture" />
+</datalist>
