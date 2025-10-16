@@ -1,26 +1,16 @@
 // src/routes/(app)/admin/markets/+page.server.ts
+// src/routes/(app)/admin/markets/+page.server.ts
 import type { Actions, PageServerLoad } from "./$types";
-import { env as publicEnv } from "$env/dynamic/public";
+import { Markets, Outcomes } from "$lib/api.server"; // <-- server-only client
 
-const API_BASE = publicEnv.PUBLIC_API_BASE || "/api";
-
-async function j<T>(fetchFn: typeof fetch, path: string, init?: RequestInit) {
-  const res = await fetchFn(`${API_BASE}${path}`, {
-    headers: { "content-type": "application/json", ...(init?.headers || {}) },
-    ...init,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return (await res.json()) as T;
-}
-
-export const load: PageServerLoad = async ({ fetch }) => {
-  const markets = await j<any[]>(fetch, "/markets");
+export const load: PageServerLoad = async () => {
+  const markets = await Markets.list();
   return { markets };
 };
 
 export const actions: Actions = {
   // Create market
-  create: async ({ request, fetch }) => {
+  create: async ({ request }) => {
     const fd = await request.formData();
     const payload = {
       title: (fd.get("title") as string) || "",
@@ -30,15 +20,12 @@ export const actions: Actions = {
       close_at: (fd.get("close_at") as string) || null,
       status: (fd.get("status") as string) || "open",
     };
-    await j<any>(fetch, "/markets", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    await Markets.create(payload);
     return { ok: true };
   },
 
   // Update market (send only changed fields from your form)
-  update: async ({ request, fetch }) => {
+  update: async ({ request }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
     const payload: Record<string, any> = {};
@@ -53,35 +40,28 @@ export const actions: Actions = {
       const v = fd.get(k);
       if (v !== null && v !== "") payload[k] = v;
     });
-    await j<any>(fetch, `/markets/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    await Markets.update(id, payload);
     return { ok: true };
   },
 
   // Close market (status -> closed)
-  close: async ({ request, fetch }) => {
+  close: async ({ request }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
-    await j<any>(fetch, `/markets/${id}`, {
-      method: "PUT",
-      body: JSON.stringify({ status: "closed" }),
-    });
+    await Markets.close(id);
     return { ok: true };
   },
 
   // Delete market
-  delete: async ({ request, fetch }) => {
+  delete: async ({ request }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
-    const res = await fetch(`${API_BASE}/markets/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error(await res.text());
+    await Markets.del(id);
     return { ok: true };
   },
 
-  // Outcomes (optional quick hooks)
-  add_outcome: async ({ request, fetch }) => {
+  // Outcomes
+  add_outcome: async ({ request }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const payload = {
@@ -89,14 +69,11 @@ export const actions: Actions = {
       price_cents: fd.get("price_cents") ? Number(fd.get("price_cents")) : null,
       status: (fd.get("status") as string) || "open",
     };
-    await j<any>(fetch, `/markets/${market_id}/outcomes`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    await Outcomes.create(market_id, payload);
     return { ok: true };
   },
 
-  update_outcome: async ({ request, fetch }) => {
+  update_outcome: async ({ request }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const outcome_id = fd.get("outcome_id") as string;
@@ -107,24 +84,15 @@ export const actions: Actions = {
     });
     if (fd.get("price_cents"))
       payload.price_cents = Number(fd.get("price_cents"));
-    await j<any>(fetch, `/markets/${market_id}/outcomes/${outcome_id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    await Outcomes.update(market_id, outcome_id, payload);
     return { ok: true };
   },
 
-  delete_outcome: async ({ request, fetch }) => {
+  delete_outcome: async ({ request }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const outcome_id = fd.get("outcome_id") as string;
-    const res = await fetch(
-      `${API_BASE}/markets/${market_id}/outcomes/${outcome_id}`,
-      {
-        method: "DELETE",
-      }
-    );
-    if (!res.ok) throw new Error(await res.text());
+    await Outcomes.del(market_id, outcome_id);
     return { ok: true };
   },
 };
