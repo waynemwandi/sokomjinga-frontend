@@ -28,6 +28,9 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+export const API_BASE = BASE;
+export const getJSON = j;
+
 /** Markets */
 export const Markets = {
   list: () => j<any[]>("/markets"),
