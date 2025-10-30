@@ -1,16 +1,14 @@
 <script lang="ts">
   let sidebarOpen = false;
+  let openMenu = false; // account dropdown state
   const SIDEBAR_W = "280px";
 
   import { toggleTheme } from "$lib/theme";
-  import {
-    Sun,
-    Moon,
-    GalleryVerticalEndIcon,
-    ChartNoAxesCombined,
-  } from "lucide-svelte";
-
+  import { Sun, Moon, ChartNoAxesCombined, UserRound } from "lucide-svelte";
   import { page } from "$app/state";
+
+  // comes from +layout.server.ts (it already returns { me })
+  export let data: { me: { email: string; name?: string } };
 
   const navClass = (href: string, path: string) =>
     `block rounded px-3 py-2 transition-colors ${
@@ -21,7 +19,7 @@
 </script>
 
 <div class="min-h-screen bg-background text-foreground">
-  <!-- Mobile header (shows sidebar toggle) -->
+  <!-- Mobile header -->
   <header
     class="md:hidden sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur"
   >
@@ -35,7 +33,47 @@
       </button>
       <div class="ml-2 text-sm text-muted-foreground">Admin</div>
 
-      <div class="ml-auto h-7 w-7 rounded-full bg-input"></div>
+      <!-- Mobile account button -->
+      <div class="ml-auto relative">
+        <button
+          class="inline-flex items-center justify-center rounded-md border border-border bg-card p-2"
+          aria-label="Account"
+          aria-haspopup="menu"
+          aria-expanded={openMenu}
+          on:click={() => (openMenu = !openMenu)}
+        >
+          <UserRound class="h-4 w-4" />
+        </button>
+
+        {#if openMenu}
+          <div
+            class="absolute right-0 mt-2 w-40 rounded-md border border-border bg-popover shadow-md z-50"
+            role="menu"
+            on:focusout={(e) => {
+              const r = e.currentTarget as HTMLElement;
+              if (!r.contains(e.relatedTarget as Node)) openMenu = false;
+            }}
+          >
+            <a
+              href="/account"
+              class="block px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+              role="menuitem"
+              on:click={() => (openMenu = false)}
+            >
+              Profile
+            </a>
+            <form method="post" action="/logout">
+              <button
+                type="submit"
+                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-accent"
+                role="menuitem"
+              >
+                Logout
+              </button>
+            </form>
+          </div>
+        {/if}
+      </div>
     </div>
   </header>
 
@@ -52,13 +90,12 @@
         <div
           class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
         >
-          <!-- <GalleryVerticalEndIcon class="size-4" /> -->
           <ChartNoAxesCombined class="size-4" />
         </div>
         <span class="text-sm font-semibold">SokoMjinga</span>
       </div>
+
       <nav class="px-2 space-y-1 text-sm">
-        <!-- Desktop Sidebar -->
         <a
           href="/admin/dashboard"
           class={navClass("/admin/dashboard", page.url.pathname)}>Dashboard</a
@@ -84,7 +121,7 @@
       <div
         class="absolute bottom-0 w-[280px] p-3 text-xs text-muted-foreground"
       >
-        mwandiwayne@gmail.com
+        {data.me?.email}
       </div>
     </aside>
 
@@ -96,7 +133,7 @@
         class="mx-auto w-full max-w-[1400px] xl:max-w-[1600px] 2xl:max-w-[1800px] px-4 xl:px-6 2xl:px-8 h-14 flex items-center gap-3"
       >
         <div class="text-sm text-muted-foreground">Admin Dashboard</div>
-        <div class="ml-auto flex items-center gap-2">
+        <div class="ml-auto flex items-center gap-3">
           <button
             class="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-input hover:bg-card transition"
             on:click={toggleTheme}
@@ -109,16 +146,57 @@
               class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
             />
           </button>
+
           <input
             class="w-72 rounded-md bg-input px-3 py-1.5 text-sm placeholder-neutral focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="Search..."
           />
-          <a
-            href="/"
-            class="text-xs text-muted-foreground hover:text-foreground"
-            >My Account</a
+
+          <!-- Account dropdown (desktop) - same UX as home -->
+          <div
+            class="relative"
+            on:keydown={(e) => {
+              if (e.key === "Escape") openMenu = false;
+            }}
           >
-          <div class="h-7 w-7 rounded-full bg-input"></div>
+            <button
+              class="inline-flex text-xs text-muted-foreground hover:text-foreground"
+              aria-haspopup="menu"
+              aria-expanded={openMenu}
+              on:click={() => (openMenu = !openMenu)}
+            >
+              My Account
+            </button>
+
+            {#if openMenu}
+              <div
+                class="absolute right-0 mt-2 w-40 rounded-md border border-border bg-popover shadow-md z-50"
+                role="menu"
+                on:focusout={(e) => {
+                  const r = e.currentTarget as HTMLElement;
+                  if (!r.contains(e.relatedTarget as Node)) openMenu = false;
+                }}
+              >
+                <a
+                  href="/account"
+                  class="block px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                  role="menuitem"
+                  on:click={() => (openMenu = false)}
+                >
+                  Profile
+                </a>
+                <form method="post" action="/logout">
+                  <button
+                    type="submit"
+                    class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-accent"
+                    role="menuitem"
+                  >
+                    Logout
+                  </button>
+                </form>
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </header>
@@ -140,9 +218,6 @@
       on:click={() => (sidebarOpen = false)}
       aria-hidden="true"
     >
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <!-- Drawer panel -->
       <div
         class="w-[72%] max-w-[320px] h-full border-r border-border bg-card"
         on:click|stopPropagation
@@ -152,12 +227,10 @@
             <div
               class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
             >
-              <!-- <GalleryVerticalEndIcon class="size-4" /> -->
               <ChartNoAxesCombined class="size-4" />
             </div>
             <span class="text-sm font-semibold">SokoMjinga</span>
           </div>
-
           <button
             class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition-colors"
             on:click={() => (sidebarOpen = false)}
@@ -167,7 +240,6 @@
         </div>
 
         <nav class="px-2 space-y-1 text-sm">
-          <!-- Mobile Sidebar -->
           <a
             href="/admin/dashboard"
             class={navClass("/admin/dashboard", page.url.pathname)}>Dashboard</a
@@ -191,8 +263,6 @@
           >
         </nav>
       </div>
-
-      <!-- Scrim -->
       <div class="flex-1 bg-foreground/50"></div>
     </div>
   {/if}

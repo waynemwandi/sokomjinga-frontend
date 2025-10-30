@@ -13,9 +13,8 @@
 
   // Server data
   export let data: { isAuthed: boolean; markets: any[] };
-
-  // NOTE: wire this to `data.isAuthed` when your auth is ready
-  let isAuthed = false;
+  let isAuthed = data.isAuthed;
+  let openMenu = false;
 
   const categories = [
     "Trending",
@@ -62,17 +61,11 @@
   const FALLBACK_CHANCE = 54;
 
   const goLogin = () => goto("/login");
-  // Map 0–100 to a blended hue between --no (red) and --yes (green)
-  const gaugeStyle = (p: number | null) => {
-    const pct = Math.max(0, Math.min(100, p ?? FALLBACK_CHANCE));
-    // 0% → all NO color, 100% → all YES color
-    return `--_p:${pct}; --_fill: color-mix(in oklch, var(--no) ${100 - pct}%, var(--yes) ${pct}%);`;
-  };
 </script>
 
 <!-- ===========================
-  Header
-=========================== -->
+    Header
+  =========================== -->
 <header
   class="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur"
 >
@@ -126,18 +119,62 @@
         class="ml-3 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
         >Deposit</a
       >
-      <a
-        href="/account"
-        class="ml-3 hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
-        >My Account</a
+
+      <!-- Account dropdown -->
+      <div
+        class="relative ml-3"
+        on:keydown={(e) => {
+          if (e.key === "Escape") openMenu = false;
+        }}
       >
-      <a
-        href="/account"
-        class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
-        aria-label="Account"
-      >
-        <UserRound class="h-4 w-4" />
-      </a>
+        <button
+          class="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
+          aria-haspopup="menu"
+          aria-expanded={openMenu}
+          on:click={() => (openMenu = !openMenu)}
+        >
+          My Account
+        </button>
+
+        <button
+          class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
+          aria-label="Account"
+          aria-haspopup="menu"
+          aria-expanded={openMenu}
+          on:click={() => (openMenu = !openMenu)}
+        >
+          <UserRound class="h-4 w-4" />
+        </button>
+
+        {#if openMenu}
+          <div
+            class="absolute right-0 mt-2 w-40 rounded-md border border-border bg-popover shadow-md"
+            role="menu"
+            on:focusout={(e) => {
+              const r = e.currentTarget as HTMLElement;
+              if (!r.contains(e.relatedTarget as Node)) openMenu = false;
+            }}
+          >
+            <a
+              href="/account"
+              class="block px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+              role="menuitem"
+              on:click={() => (openMenu = false)}
+            >
+              Profile
+            </a>
+            <form method="post" action="/logout">
+              <button
+                type="submit"
+                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-accent"
+                role="menuitem"
+              >
+                Logout
+              </button>
+            </form>
+          </div>
+        {/if}
+      </div>
     {:else}
       <a
         href="/login"
@@ -198,8 +235,8 @@
 </header>
 
 <!-- ===========================
-  Grid CONTENT
-=========================== -->
+    Grid CONTENT
+  =========================== -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
   <div
     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
