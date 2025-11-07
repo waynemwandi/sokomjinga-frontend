@@ -26,11 +26,12 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     if (r.ok) throw redirect(302, "/");
   }
 
-  // (Optional) try refresh
+  // Try refresh
   if (refresh) {
     const rr = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
-      headers: { authorization: `Bearer ${refresh}` },
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
     });
     if (rr.ok) throw redirect(302, "/");
   }
