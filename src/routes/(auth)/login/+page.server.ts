@@ -5,11 +5,17 @@ import { env as pub } from "$env/dynamic/public";
 import { fail, redirect } from "@sveltejs/kit";
 import { dev } from "$app/environment";
 
-const BASE = (
+const FETCH_BASE = (
   priv.PRIVATE_API_BASE ||
   pub.PUBLIC_API_BASE ||
   "http://127.0.0.1:8000"
 ).replace(/\/+$/, "");
+
+// This one is ONLY for URLs that the browser will hit directly
+const PUBLIC_BASE = (pub.PUBLIC_API_BASE || "http://127.0.0.1:8000").replace(
+  /\/+$/,
+  ""
+);
 
 const isProd = !dev;
 
@@ -19,14 +25,14 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
 
   // If already authed, bounce
   if (access) {
-    const r = await fetch(`${BASE}/auth/me`, {
+    const r = await fetch(`${FETCH_BASE}/auth/me`, {
       headers: { authorization: `Bearer ${access}` },
     });
     if (r.ok) throw redirect(302, "/");
   }
 
   if (refresh) {
-    const rr = await fetch(`${BASE}/auth/refresh`, {
+    const rr = await fetch(`${FETCH_BASE}/auth/refresh`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ refresh_token: refresh }),
@@ -38,7 +44,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const mode = url.searchParams.get("mode") === "signup" ? "signup" : "login";
 
   // expose Google start URL and current mode
-  return { googleStartUrl: `${BASE}/auth/google/start`, mode };
+  return { googleStartUrl: `${PUBLIC_BASE}/auth/google/start`, mode };
 };
 
 export const actions: Actions = {
@@ -54,7 +60,7 @@ export const actions: Actions = {
       return fail(400, { message: "Passwords do not match" });
 
     // 1) create user
-    const s = await fetch(`${BASE}/auth/signup`, {
+    const s = await fetch(`${FETCH_BASE}/auth/signup`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, password, name }),
@@ -62,7 +68,7 @@ export const actions: Actions = {
     if (!s.ok) return fail(s.status, { message: await s.text() });
 
     // 2) login
-    const r = await fetch(`${BASE}/auth/login`, {
+    const r = await fetch(`${FETCH_BASE}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -80,7 +86,7 @@ export const actions: Actions = {
     const password = String(fd.get("password") || "");
     if (!email || !password) return fail(400, { message: "Missing fields" });
 
-    const r = await fetch(`${BASE}/auth/login`, {
+    const r = await fetch(`${FETCH_BASE}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, password }),
