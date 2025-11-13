@@ -10,15 +10,14 @@ const BASE = (
   pub.PUBLIC_API_BASE ||
   "http://127.0.0.1:8000"
 ).replace(/\/+$/, "");
+
 const isProd = !dev;
 
-export const load: PageServerLoad = async ({ cookies, fetch }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const access = cookies.get("access_token");
   const refresh = cookies.get("refresh_token");
 
-  if (!access && !refresh) return {};
-
-  // Try access first
+  // If already authed, bounce
   if (access) {
     const r = await fetch(`${BASE}/auth/me`, {
       headers: { authorization: `Bearer ${access}` },
@@ -26,7 +25,6 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     if (r.ok) throw redirect(302, "/");
   }
 
-  // Try refresh
   if (refresh) {
     const rr = await fetch(`${BASE}/auth/refresh`, {
       method: "POST",
@@ -36,7 +34,11 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     if (rr.ok) throw redirect(302, "/");
   }
 
-  return {};
+  // derive mode from querystring
+  const mode = url.searchParams.get("mode") === "signup" ? "signup" : "login";
+
+  // expose Google start URL and current mode
+  return { googleStartUrl: `${BASE}/auth/google/start`, mode };
 };
 
 export const actions: Actions = {
@@ -116,6 +118,7 @@ function setAuthCookies(
       maxAge: 60 * 60 * 24 * 30,
     });
 }
+
 function clearAuthCookies(
   cookies: import("@sveltejs/kit").Cookies,
   prod = false

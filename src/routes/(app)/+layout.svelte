@@ -1,3 +1,4 @@
+<!-- src/routes/(app)/+layout.svelte -->
 <script lang="ts">
   let sidebarOpen = false;
   let openMenu = false; // account dropdown state

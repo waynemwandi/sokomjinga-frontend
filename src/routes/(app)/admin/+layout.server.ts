@@ -1,3 +1,4 @@
+// src/routes/(app)/admin/+layout.server.ts
 import type { LayoutServerLoad } from "./$types";
 import { redirect } from "@sveltejs/kit";
 import { env as priv } from "$env/dynamic/private";

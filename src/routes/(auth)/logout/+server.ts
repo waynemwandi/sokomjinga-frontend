@@ -1,3 +1,4 @@
+// src/routes/(auth)/logout/+server.ts
 import type { RequestHandler } from "./$types";
 import { redirect } from "@sveltejs/kit";
 

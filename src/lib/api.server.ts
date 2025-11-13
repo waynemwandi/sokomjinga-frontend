@@ -1,3 +1,4 @@
+// src/lib/api.server.ts
 // server-only API client
 import { env as priv } from "$env/dynamic/private";
 import { env as pub } from "$env/dynamic/public";
@@ -31,6 +32,7 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
   return JSON.parse(text) as T;
 }
 
+// Markets API - CRUD and close
 export const Markets = {
   list: () => j<any[]>("/markets"),
   get: (id: string) => j<any>(`/markets/${id}`),
@@ -45,6 +47,8 @@ export const Markets = {
       body: JSON.stringify({ status: "closed" }),
     }),
 };
+
+// Market Outcomes API - CRUD
 export const Outcomes = {
   create: (marketId: string, payload: any) =>
     j<any>(`/markets/${marketId}/outcomes`, {

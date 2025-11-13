@@ -1,10 +1,47 @@
+<!-- src/routes/(app)/admin/dashboard/+page.svelte -->
 <script lang="ts">
-  let cards = [
-    { title: "Total Revenue", value: "KES 1,250.00", delta: "+12.5%" },
-    { title: "New Customers", value: "1,234", delta: "-20%" },
-    { title: "Active Accounts", value: "45,678", delta: "+12.5%" },
-    { title: "Growth Rate", value: "4.5%", delta: "+4.5%" },
-  ];
+  export let data: {
+    stats: {
+      total_users: number;
+      signups_last_7d: number;
+      logins_today: number;
+      logins_last_7d: number;
+      logins_by_provider: Record<string, number>;
+    } | null;
+  };
+
+  const s = data.stats;
+
+  // graceful fallback if stats are unavailable
+  const cards = s
+    ? [
+        {
+          title: "Total Users",
+          value: s.total_users.toLocaleString(),
+          delta: "", // you can compute a real delta later
+        },
+        {
+          title: "Signups (last 7 days)",
+          value: s.signups_last_7d.toLocaleString(),
+          delta: "",
+        },
+        {
+          title: "Logins Today",
+          value: s.logins_today.toLocaleString(),
+          delta: "",
+        },
+        {
+          title: "Logins (last 7 days)",
+          value: s.logins_last_7d.toLocaleString(),
+          delta: "",
+        },
+      ]
+    : [
+        { title: "Total Users", value: "—", delta: "" },
+        { title: "Signups (last 7 days)", value: "—", delta: "" },
+        { title: "Logins Today", value: "—", delta: "" },
+        { title: "Logins (last 7 days)", value: "—", delta: "" },
+      ];
 </script>
 
 <h1 class="text-xl font-semibold mb-4">Dashboard</h1>
@@ -17,7 +54,9 @@
       <div class="text-xs text-neutral">{c.title}</div>
       <div class="mt-2 flex items-baseline gap-2">
         <div class="text-2xl font-semibold">{c.value}</div>
-        <div class="text-xs text-neutral">{c.delta}</div>
+        {#if c.delta}
+          <div class="text-xs text-neutral">{c.delta}</div>
+        {/if}
       </div>
     </div>
   {/each}
@@ -38,5 +77,7 @@
       >Key Personnel</button
     >
   </div>
-  <div class="p-4 text-sm text-neutral">Table placeholder DataTable.</div>
+  <div class="p-4 text-sm text-neutral">
+    Table placeholder DataTable. (Later: show logins_by_provider, etc.)
+  </div>
 </div>
