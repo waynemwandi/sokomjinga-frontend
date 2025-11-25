@@ -1,5 +1,4 @@
 // src/routes/(app)/admin/markets/+page.server.ts
-// src/routes/(app)/admin/markets/+page.server.ts
 import type { Actions, PageServerLoad } from "./$types";
 import { Markets, Outcomes } from "$lib/api.server"; // <-- server-only client
 

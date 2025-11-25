@@ -1,3 +1,4 @@
+<!-- src/routes/+page.svelte -->
 <script lang="ts">
   import { toggleTheme } from "$lib/theme";
   import {

@@ -1,3 +1,4 @@
+<!-- src/routes/(app)/admin/markets/+page.svelte -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { Markets } from "$lib/api"; // ← use our helper

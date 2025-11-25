@@ -1,3 +1,4 @@
+// src/routes/+page.server.ts
 import type { PageServerLoad } from "./$types";
 import { env as pub } from "$env/dynamic/public";
 import { env as priv } from "$env/dynamic/private";
