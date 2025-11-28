@@ -2,6 +2,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Markets } from "$lib/api"; // ← use our helper
+  export let data: {
+    accessToken?: string;
+    markets: any[];
+  };
+
+  const accessToken = data.accessToken as string | undefined;
 
   type Outcome = { id: string; label: string; probability?: number };
   type Market = {
@@ -22,8 +28,8 @@
   let newDescription = "";
   let newImageUrl = "";
   let newCategory = "";
-  let markets: Market[] = [];
-  let loading = true;
+  let markets: Market[] = data.markets as Market[];
+  let loading = false;
   let error: string | null = null;
 
   let q = "";
@@ -41,7 +47,7 @@
     }
   }
 
-  onMount(fetchMarkets);
+  // onMount(fetchMarkets);
 
   async function onClose(m: Market) {
     const ok = confirm(
@@ -49,7 +55,7 @@
     );
     if (!ok) return;
     try {
-      await Markets.close(m.id);
+      await Markets.close(m.id, accessToken);
       await fetchMarkets();
     } catch (e: any) {
       alert(e?.message || "Close failed");
@@ -62,7 +68,7 @@
     );
     if (!ok) return;
     try {
-      await Markets.del(m.id);
+      await Markets.del(m.id, accessToken);
       await fetchMarkets();
     } catch (e: any) {
       alert(e?.message || "Delete failed");
@@ -75,13 +81,16 @@
       return;
     }
     try {
-      await Markets.create({
-        title: newTitle.trim(),
-        description: newDescription.trim() || null,
-        image_url: newImageUrl.trim() || null, // ← new
-        category: newCategory.trim() || null, // ← new
-        status: "open",
-      });
+      await Markets.create(
+        {
+          title: newTitle.trim(),
+          description: newDescription.trim() || null,
+          image_url: newImageUrl.trim() || null, // ← new
+          category: newCategory.trim() || null, // ← new
+          status: "open",
+        },
+        accessToken
+      );
       showCreate = false;
       newTitle = "";
       newDescription = "";
@@ -118,12 +127,16 @@
   async function updateMarket() {
     if (!edit) return;
     try {
-      await Markets.update(edit.id, {
-        title: editTitle.trim(),
-        description: editDescription.trim() || null,
-        image_url: editImageUrl.trim() || null,
-        category: editCategory.trim() || null,
-      });
+      await Markets.update(
+        edit.id,
+        {
+          title: editTitle.trim(),
+          description: editDescription.trim() || null,
+          image_url: editImageUrl.trim() || null,
+          category: editCategory.trim() || null,
+        },
+        accessToken
+      );
       editOpen = false;
       edit = null;
       await fetchMarkets();
@@ -573,10 +586,10 @@
   Shared Category Options
 =========================== -->
 <datalist id="market-categories">
-  <option value="Politics" />
-  <option value="Sports" />
-  <option value="Markets" />
-  <option value="Tech" />
-  <option value="World" />
-  <option value="Culture" />
+  <option value="Politics"></option>
+  <option value="Sports"></option>
+  <option value="Markets"></option>
+  <option value="Tech"></option>
+  <option value="World"></option>
+  <option value="Culture"></option>
 </datalist>

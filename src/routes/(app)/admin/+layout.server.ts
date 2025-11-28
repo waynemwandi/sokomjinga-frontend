@@ -39,5 +39,5 @@ export const load: LayoutServerLoad = async ({ cookies, fetch }) => {
   const me = await r.json();
   if (!me?.is_admin) throw redirect(302, "/");
 
-  return { me }; // available to your admin pages if you need it
+  return { me, accessToken: access };
 };

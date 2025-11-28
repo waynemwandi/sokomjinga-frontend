@@ -2,14 +2,17 @@
 import type { Actions, PageServerLoad } from "./$types";
 import { Markets, Outcomes } from "$lib/api.server"; // <-- server-only client
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
   const markets = await Markets.list();
-  return { markets };
+  return {
+    markets,
+    accessToken: locals.accessToken ?? null,
+  };
 };
 
 export const actions: Actions = {
   // Create market
-  create: async ({ request }) => {
+  create: async ({ request, locals }) => {
     const fd = await request.formData();
     const payload = {
       title: (fd.get("title") as string) || "",
@@ -19,12 +22,14 @@ export const actions: Actions = {
       close_at: (fd.get("close_at") as string) || null,
       status: (fd.get("status") as string) || "open",
     };
-    await Markets.create(payload);
+    await Markets.create(payload, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
   // Update market (send only changed fields from your form)
-  update: async ({ request }) => {
+  update: async ({ request, locals }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
     const payload: Record<string, any> = {};
@@ -39,28 +44,34 @@ export const actions: Actions = {
       const v = fd.get(k);
       if (v !== null && v !== "") payload[k] = v;
     });
-    await Markets.update(id, payload);
+    await Markets.update(id, payload, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
   // Close market (status -> closed)
-  close: async ({ request }) => {
+  close: async ({ request, locals }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
-    await Markets.close(id);
+    await Markets.close(id, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
   // Delete market
-  delete: async ({ request }) => {
+  delete: async ({ request, locals }) => {
     const fd = await request.formData();
     const id = fd.get("id") as string;
-    await Markets.del(id);
+    await Markets.del(id, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
   // Outcomes
-  add_outcome: async ({ request }) => {
+  add_outcome: async ({ request, locals }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const payload = {
@@ -68,11 +79,13 @@ export const actions: Actions = {
       price_cents: fd.get("price_cents") ? Number(fd.get("price_cents")) : null,
       status: (fd.get("status") as string) || "open",
     };
-    await Outcomes.create(market_id, payload);
+    await Outcomes.create(market_id, payload, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
-  update_outcome: async ({ request }) => {
+  update_outcome: async ({ request, locals }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const outcome_id = fd.get("outcome_id") as string;
@@ -83,15 +96,19 @@ export const actions: Actions = {
     });
     if (fd.get("price_cents"))
       payload.price_cents = Number(fd.get("price_cents"));
-    await Outcomes.update(market_id, outcome_id, payload);
+    await Outcomes.update(market_id, outcome_id, payload, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 
-  delete_outcome: async ({ request }) => {
+  delete_outcome: async ({ request, locals }) => {
     const fd = await request.formData();
     const market_id = fd.get("market_id") as string;
     const outcome_id = fd.get("outcome_id") as string;
-    await Outcomes.del(market_id, outcome_id);
+    await Outcomes.del(market_id, outcome_id, {
+      headers: { Authorization: `Bearer ${locals.accessToken}` },
+    });
     return { ok: true };
   },
 };

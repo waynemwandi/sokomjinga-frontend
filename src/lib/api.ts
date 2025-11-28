@@ -5,9 +5,15 @@ import { env as publicEnv } from "$env/dynamic/public";
 const BASE = (publicEnv.PUBLIC_API_BASE || "/api").replace(/\/+$/, "");
 
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
+  // merge headers first, then spread init, so we never lose content-type
+  const headers = {
+    "content-type": "application/json",
+    ...(init?.headers || {}),
+  };
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { "content-type": "application/json", ...(init?.headers || {}) },
-    ...init,
+    ...(init || {}),
+    headers,
   });
 
   if (!res.ok) {
@@ -35,30 +41,88 @@ export const getJSON = j;
 export const Markets = {
   list: () => j<any[]>("/markets"),
   get: (id: string) => j<any>(`/markets/${id}`),
-  create: (payload: any) =>
-    j<any>("/markets", { method: "POST", body: JSON.stringify(payload) }),
-  update: (id: string, payload: any) =>
-    j<any>(`/markets/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
-  del: (id: string) => j<void>(`/markets/${id}`, { method: "DELETE" }),
-  close: (id: string) =>
+
+  // CHANGE THIS
+  create: (payload: any, accessToken?: string) =>
+    j<any>("/markets", {
+      method: "POST",
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
+    }),
+
+  update: (id: string, payload: any, accessToken?: string) =>
+    j<any>(`/markets/${id}`, {
+      method: "PUT",
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
+    }),
+
+  del: (id: string, accessToken?: string) =>
+    j<void>(`/markets/${id}`, {
+      method: "DELETE",
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
+    }),
+
+  close: (id: string, accessToken?: string) =>
     j<any>(`/markets/${id}`, {
       method: "PUT",
       body: JSON.stringify({ status: "closed" }),
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
     }),
 };
 
 /** Outcomes */
 export const Outcomes = {
-  create: (marketId: string, payload: any) =>
+  create: (marketId: string, payload: any, accessToken?: string) =>
     j<any>(`/markets/${marketId}/outcomes`, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
     }),
-  update: (marketId: string, outcomeId: string, payload: any) =>
+
+  update: (
+    marketId: string,
+    outcomeId: string,
+    payload: any,
+    accessToken?: string
+  ) =>
     j<any>(`/markets/${marketId}/outcomes/${outcomeId}`, {
       method: "PUT",
-      body: JSON.stringify(payload),
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
     }),
-  del: (marketId: string, outcomeId: string) =>
-    j<void>(`/markets/${marketId}/outcomes/${outcomeId}`, { method: "DELETE" }),
+
+  del: (marketId: string, outcomeId: string, accessToken?: string) =>
+    j<void>(`/markets/${marketId}/outcomes/${outcomeId}`, {
+      method: "DELETE",
+      headers: accessToken
+        ? {
+            Authorization: `Bearer ${accessToken}`,
+          }
+        : undefined,
+    }),
 };
