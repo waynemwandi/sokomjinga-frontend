@@ -1,21 +1,63 @@
 <!-- src/routes/(app)/account/+page.svelte -->
 <script lang="ts">
-  import { Mail, Phone } from "lucide-svelte";
+  import {
+    Mail,
+    Phone,
+    ArrowUpRight,
+    Settings,
+    Bookmark,
+    Trash2,
+    TrendingUp,
+    ListChecks,
+    Heart,
+    Timer,
+  } from "lucide-svelte";
+  // Shape for /me/stats response (current backend)
+  type StatsResponse = {
+    total_predictions?: number;
+    correct?: number;
+    incorrect?: number;
+    accuracy?: number; // 0–1 or 0–100
+    new_predictions_this_month?: number;
+    correct_this_week?: number;
+    incorrect_this_week?: number;
+  };
 
-  // Still accept data from +page.server.ts (user from /auth/me)
+  // Shape for /me/bets response (flat, not nested market)
+  type Bet = {
+    bet_id?: string;
+    id?: string;
+    market_id?: string;
+    title?: string;
+    category?: string;
+    prediction?: "yes" | "no" | string;
+    result?: "correct" | "incorrect" | "pending" | string;
+    created_at?: string;
+    yes_percentage?: number;
+    no_percentage?: number;
+  };
+
+  type ResultKind = "correct" | "incorrect" | "pending";
+
   export let data: {
     user: any;
+    stats?: StatsResponse | null;
+    bets?: Bet[];
+    positions?: any[];
   };
+
+  // debug
+  // console.log("ACCOUNT PAGE DATA", data);
+  // console.log("BETS", data.bets);
+  // console.log("STATS", data.stats);
 
   const u = data.user ?? {};
   const profile = u.profile ?? u.user_profile ?? {};
 
-  // Derived fields from existing API shape
   const displayName =
     u.name ?? profile.full_name ?? profile.name ?? "John Mwangi";
 
   const email = u.email ?? profile.email ?? "";
-
   const phone = profile.phone ?? u.phone ?? "";
 
   const handle =
@@ -44,41 +86,83 @@
         .toUpperCase()) ||
     "JM";
 
-  // Static stats for now – will later come from API
+  // ----- STATS NORMALIZATION -----
+  const backendStats: StatsResponse = data.stats ?? {};
+
+  const total = backendStats.total_predictions ?? 0;
+  const correct = backendStats.correct ?? 0;
+  const incorrect = backendStats.incorrect ?? 0;
+  const pending = Math.max(0, total - correct - incorrect);
+
+  let accuracyValue: number | null = null;
+  if (typeof backendStats.accuracy === "number") {
+    // backend might send 0–1 or 0–100
+    accuracyValue =
+      backendStats.accuracy <= 1
+        ? backendStats.accuracy * 100
+        : backendStats.accuracy;
+  } else if (total > 0) {
+    accuracyValue = (correct / total) * 100;
+  }
+
   const stats = [
     {
       icon: "accuracy",
       label: "Accuracy",
-      value: "67%",
-      subtext: "124 out of 185 predictions",
+      value: accuracyValue !== null ? `${accuracyValue.toFixed(0)}%` : "–",
+      subtext:
+        total > 0
+          ? `${correct} out of ${total} predictions`
+          : "No predictions yet",
       highlight: "green",
     },
     {
       icon: "total",
       label: "Total Predictions",
-      value: "185",
-      subtext: "+12 this month",
+      value: String(total),
+      subtext:
+        backendStats.new_predictions_this_month != null
+          ? `+${backendStats.new_predictions_this_month} this month`
+          : "",
       highlight: "neutral",
     },
     {
       icon: "correct",
       label: "Correct",
-      value: "124",
-      subtext: "+8 this week",
+      value: String(correct),
+      subtext:
+        backendStats.correct_this_week != null
+          ? `+${backendStats.correct_this_week} this week`
+          : "",
       highlight: "green",
     },
     {
       icon: "incorrect",
       label: "Incorrect",
-      value: "61",
-      subtext: "+2 this week",
+      value: String(incorrect),
+      subtext:
+        backendStats.incorrect_this_week != null
+          ? `+${backendStats.incorrect_this_week} this week`
+          : "",
       highlight: "red",
     },
   ] as const;
 
-  type ResultKind = "correct" | "incorrect" | "pending";
+  const toResultKind = (status?: string): ResultKind => {
+    const s = (status || "").toLowerCase();
+    if (s === "won" || s === "correct") return "correct";
+    if (s === "lost" || s === "incorrect") return "incorrect";
+    return "pending";
+  };
 
-  const predictions: {
+  const formatDate = (d?: string) => {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return d;
+    return dt.toLocaleDateString("en-KE");
+  };
+
+  type PredictionItem = {
     id: string;
     title: string;
     category: string;
@@ -87,48 +171,36 @@
     date: string;
     yesPercentage: number;
     noPercentage: number;
-  }[] = [
-    {
-      id: "1",
-      title: "Will Ruto pick Gladys Wanga as running-mate in 2027?",
-      category: "Politics",
-      prediction: "yes",
-      result: "pending",
-      date: "10/10/2023",
-      yesPercentage: 45,
-      noPercentage: 55,
-    },
-    {
-      id: "2",
-      title: "Will Bitcoin close above $100,000 by year-end?",
-      category: "Finance",
-      prediction: "yes",
-      result: "correct",
-      date: "9/20/2023",
-      yesPercentage: 64,
-      noPercentage: 36,
-    },
-    {
-      id: "3",
-      title: "Will Manchester City win the Premier League this season?",
-      category: "Sports",
-      prediction: "yes",
-      result: "correct",
-      date: "9/20/2023",
-      yesPercentage: 68,
-      noPercentage: 32,
-    },
-    {
-      id: "4",
-      title: "Will Nairobi record a daily high above 35°C this month?",
-      category: "Weather",
-      prediction: "no",
-      result: "incorrect",
-      date: "8/15/2023",
-      yesPercentage: 62,
-      noPercentage: 38,
-    },
-  ];
+  };
+
+  const rawBets: Bet[] = data.bets ?? [];
+
+  // ----- BETS → UI PREDICTIONS -----
+  const predictions: PredictionItem[] = rawBets.map((b, idx) => {
+    const title = b.title ?? "Untitled market";
+    const category = b.category ?? "General";
+
+    const rawYes = b.yes_percentage ?? 0;
+    const rawNo =
+      b.no_percentage != null ? b.no_percentage : 100 - (rawYes || 0);
+
+    const yesPercentage = Math.max(0, Math.min(100, Math.round(rawYes ?? 0)));
+    const noPercentage = Math.max(0, Math.min(100, Math.round(rawNo ?? 0)));
+
+    const predictionStr = (b.prediction || "yes").toLowerCase();
+    const prediction: "yes" | "no" = predictionStr === "no" ? "no" : "yes";
+
+    return {
+      id: String(b.bet_id ?? b.id ?? idx),
+      title,
+      category,
+      prediction,
+      result: toResultKind(b.result),
+      date: formatDate(b.created_at),
+      yesPercentage,
+      noPercentage,
+    };
+  });
 
   const resultLabel = (r: ResultKind) =>
     r === "pending" ? "Pending" : r.charAt(0).toUpperCase() + r.slice(1);
@@ -169,15 +241,16 @@
             type="button"
             class="inline-flex items-center rounded-md border border-border bg-transparent px-3 py-2 text-xs md:text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
           >
-            <span class="mr-2">⤴</span>
+            <ArrowUpRight class="mr-2 h-4 w-4" />
             Share Profile
           </button>
+
           <button
             type="button"
             class="inline-flex items-center rounded-md border border-border bg-transparent px-3 py-2 text-xs md:text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
             aria-label="Settings"
           >
-            ⚙
+            <Settings class="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -252,13 +325,13 @@
                     : 'bg-muted text-muted-foreground'}"
               >
                 {#if stat.icon === "accuracy"}
-                  ↑
+                  <TrendingUp class="h-4 w-4" />
                 {:else if stat.icon === "total"}
-                  ●
+                  <ListChecks class="h-4 w-4" />
                 {:else if stat.icon === "correct"}
-                  ♥
+                  <Heart class="h-4 w-4" />
                 {:else}
-                  ⏱
+                  <Timer class="h-4 w-4" />
                 {/if}
               </div>
             </div>
@@ -282,92 +355,102 @@
     <div class="mx-auto w-full max-w-5xl">
       <h2 class="text-xl md:text-2xl font-semibold mb-6">Prediction History</h2>
 
-      <div class="space-y-3">
-        {#each predictions as p}
-          <article
-            class="rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors"
-          >
-            <div
-              class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+      {#if predictions.length === 0}
+        <p class="text-sm text-muted-foreground">
+          You haven’t placed any bets yet. Once you start predicting, your
+          history will appear here.
+        </p>
+      {:else}
+        <div class="space-y-3">
+          {#each predictions as p}
+            <article
+              class="rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors"
             >
-              <!-- Left -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-2">
-                  <span
-                    class="inline-block rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground"
-                  >
-                    {p.category}
-                  </span>
-                  <span
-                    class="inline-block rounded px-2 py-1 text-xs font-medium
+              <div
+                class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+              >
+                <!-- Left -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span
+                      class="inline-block rounded px-2 py-1 text-xs font-medium bg-muted text-muted-foreground"
+                    >
+                      {p.category}
+                    </span>
+                    <span
+                      class="inline-block rounded px-2 py-1 text-xs font-medium
                       {p.result === 'correct'
-                      ? 'bg-emerald-900/40 text-emerald-400'
-                      : p.result === 'incorrect'
-                        ? 'bg-red-900/40 text-red-400'
-                        : 'bg-muted text-muted-foreground'}"
+                        ? 'bg-emerald-900/40 text-emerald-400'
+                        : p.result === 'incorrect'
+                          ? 'bg-red-900/40 text-red-400'
+                          : 'bg-muted text-muted-foreground'}"
+                    >
+                      {resultLabel(p.result)}
+                    </span>
+                  </div>
+                  <h3
+                    class="font-semibold text-sm md:text-base text-foreground"
                   >
-                    {resultLabel(p.result)}
-                  </span>
+                    {p.title}
+                  </h3>
+                  <p class="text-xs text-muted-foreground mt-2">{p.date}</p>
                 </div>
-                <h3 class="font-semibold text-sm md:text-base text-foreground">
-                  {p.title}
-                </h3>
-                <p class="text-xs text-muted-foreground mt-2">{p.date}</p>
-              </div>
 
-              <!-- Middle -->
-              <div class="flex items-center gap-6">
-                <div class="text-center">
-                  <p class="text-[11px] text-muted-foreground mb-1">
-                    Your Prediction
-                  </p>
-                  <div
-                    class="px-4 py-2 rounded text-sm font-semibold
+                <!-- Middle -->
+                <div class="flex items-center gap-6">
+                  <div class="text-center">
+                    <p class="text-[11px] text-muted-foreground mb-1">
+                      Your Prediction
+                    </p>
+                    <div
+                      class="px-4 py-2 rounded text-sm font-semibold
                       {p.prediction === 'yes'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-red-600 text-white'}"
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-red-600 text-white'}"
+                    >
+                      {p.prediction.toUpperCase()}
+                    </div>
+                  </div>
+
+                  <div class="flex gap-4 text-center">
+                    <div>
+                      <p class="text-lg font-bold text-emerald-400">
+                        {p.yesPercentage}%
+                      </p>
+                      <p class="text-[11px] text-muted-foreground">Yes</p>
+                    </div>
+                    <div>
+                      <p class="text-lg font-bold text-red-400">
+                        {p.noPercentage}%
+                      </p>
+                      <p class="text-[11px] text-muted-foreground">No</p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right actions -->
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    aria-label="Bookmark"
                   >
-                    {p.prediction.toUpperCase()}
-                  </div>
-                </div>
+                    <Bookmark class="h-4 w-4" />
+                  </button>
 
-                <div class="flex gap-4 text-center">
-                  <div>
-                    <p class="text-lg font-bold text-emerald-400">
-                      {p.yesPercentage}%
-                    </p>
-                    <p class="text-[11px] text-muted-foreground">Yes</p>
-                  </div>
-                  <div>
-                    <p class="text-lg font-bold text-red-400">
-                      {p.noPercentage}%
-                    </p>
-                    <p class="text-[11px] text-muted-foreground">No</p>
-                  </div>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-3 py-2 text-xs text-muted-foreground hover:bg-red-900/40 hover:text-red-400"
+                    aria-label="Delete"
+                  >
+                    <Trash2 class="h-4 w-4" />
+                  </button>
                 </div>
               </div>
-
-              <!-- Right actions -->
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Bookmark"
-                >
-                  ☆
-                </button>
-                <button
-                  type="button"
-                  class="inline-flex items-center justify-center rounded-md border border-border bg-transparent px-3 py-2 text-xs text-muted-foreground hover:bg-red-900/40 hover:text-red-400"
-                  aria-label="Delete"
-                >
-                  🗑
-                </button>
-              </div>
-            </div>
-          </article>
-        {/each}
-      </div>
+            </article>
+          {/each}
+        </div>
+      {/if}
     </div>
   </section>
 </main>

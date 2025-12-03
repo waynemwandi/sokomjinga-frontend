@@ -14,30 +14,49 @@ const BASE = (
 export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   // must be logged in
   if (!locals.accessToken) {
-    // optional: remember where we wanted to go
     const redirectTo = encodeURIComponent(url.pathname);
     throw redirect(302, `/login?redirect=${redirectTo}`);
   }
 
-  const res = await fetch(`${BASE}/auth/me`, {
-    headers: {
-      Authorization: `Bearer ${locals.accessToken}`,
-      accept: "application/json",
-    },
-  });
+  const headers = {
+    Authorization: `Bearer ${locals.accessToken}`,
+    accept: "application/json",
+  };
 
-  if (res.status === 401) {
+  // Fetch everything in parallel
+  const [userRes, statsRes, betsRes, positionsRes] = await Promise.all([
+    fetch(`${BASE}/auth/me`, { headers }),
+    fetch(`${BASE}/me/stats`, { headers }),
+    fetch(`${BASE}/me/bets`, { headers }),
+    fetch(`${BASE}/me/positions`, { headers }),
+  ]);
+
+  // Auth guard
+  if (userRes.status === 401) {
     const redirectTo = encodeURIComponent(url.pathname);
     throw redirect(302, `/login?redirect=${redirectTo}`);
   }
 
-  if (!res.ok) {
-    throw error(500, `Failed to load profile: ${res.status} ${res.statusText}`);
+  if (!userRes.ok) {
+    throw error(
+      500,
+      `Failed to load profile: ${userRes.status} ${userRes.statusText}`
+    );
   }
 
-  const user = await res.json(); // whatever shape your /auth/me returns
+  const user = await userRes.json();
+
+  // The others are "best effort" – if they fail we just show empty/defaults
+  const stats = statsRes.ok ? await statsRes.json().catch(() => null) : null;
+  const bets = betsRes.ok ? await betsRes.json().catch(() => []) : [];
+  const positions = positionsRes.ok
+    ? await positionsRes.json().catch(() => [])
+    : [];
 
   return {
     user,
+    stats,
+    bets,
+    positions,
   };
 };
