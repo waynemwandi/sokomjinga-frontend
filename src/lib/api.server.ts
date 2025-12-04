@@ -118,3 +118,60 @@ export const Outcomes = {
       ...(init || {}),
     }),
 };
+
+// Wallet API
+export const Wallet = {
+  // current user's wallet summary
+  get: (init?: RequestInit) =>
+    j<{
+      balance_cents: number;
+      currency: string;
+    }>("/wallet/me", init),
+
+  // Dev-only "deposit":
+  // 1) POST /wallet/deposits  (pending)
+  // 2) POST /wallet/deposits/{id}/confirm  (credits wallet)
+  deposit: async (payload: { amount_cents: number }, init?: RequestInit) => {
+    const created = await j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>("/wallet/deposits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+
+    const confirmPayload = {
+      mpesa_reference: `DEV-${Date.now()}`,
+      mpesa_phone: null,
+    };
+
+    const confirmed = await j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>(`/wallet/deposits/${created.id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify(confirmPayload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+
+    return confirmed;
+  },
+};
+
+// "Me" API – stats, bets, positions
+export const Me = {
+  bets: (init?: RequestInit) => j<any[]>("/me/bets", init),
+};

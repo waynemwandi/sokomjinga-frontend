@@ -114,14 +114,17 @@
       <aside
         class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-card/60 backdrop-blur"
       >
-        <div class="flex items-center gap-2 p-4">
+        <a
+          href="/"
+          class="flex items-center gap-2 p-4 hover:bg-accent rounded-md"
+        >
           <div
             class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
           >
             <ChartNoAxesCombined class="size-4" />
           </div>
           <span class="text-sm font-semibold">SokoMjinga</span>
-        </div>
+        </a>
 
         <nav class="px-2 space-y-1 text-sm">
           <a

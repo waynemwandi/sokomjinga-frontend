@@ -1,13 +1,13 @@
 <!-- src/routes/(app)/admin/markets/+page.svelte -->
 <script lang="ts">
-  import { onMount } from "svelte";
-  import { Markets } from "$lib/api"; // ← use our helper
+  import { Markets } from "$lib/api"; // client helper
+
   export let data: {
-    accessToken?: string;
+    accessToken?: string | null;
     markets: any[];
   };
 
-  const accessToken = data.accessToken as string | undefined;
+  const accessToken = (data.accessToken ?? undefined) as string | undefined;
 
   type Outcome = { id: string; label: string; probability?: number };
   type Market = {
@@ -47,8 +47,6 @@
     }
   }
 
-  // onMount(fetchMarkets);
-
   async function onClose(m: Market) {
     const ok = confirm(
       `Close market “${m.title}”? This will prevent further trading.`
@@ -85,8 +83,8 @@
         {
           title: newTitle.trim(),
           description: newDescription.trim() || null,
-          image_url: newImageUrl.trim() || null, // ← new
-          category: newCategory.trim() || null, // ← new
+          image_url: newImageUrl.trim() || null,
+          category: newCategory.trim() || null,
           status: "open",
         },
         accessToken
@@ -94,8 +92,8 @@
       showCreate = false;
       newTitle = "";
       newDescription = "";
-      newImageUrl = ""; // ← reset
-      newCategory = ""; // ← reset
+      newImageUrl = "";
+      newCategory = "";
       await fetchMarkets();
     } catch (e: any) {
       alert(e?.message || "Create failed");
@@ -213,6 +211,7 @@
       aria-modal="true"
       aria-label="Create Market"
       on:click|stopPropagation
+      on:keydown|stopPropagation
       tabindex="-1"
     >
       <!-- Modal header -->
@@ -232,8 +231,11 @@
         <!-- Left: fields -->
         <div class="space-y-3">
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Title *</label>
+            <label for="new-title" class="text-xs text-muted-foreground"
+              >Title *</label
+            >
             <input
+              id="new-title"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={newTitle}
               placeholder="e.g. Will BTC close above $100k by year-end?"
@@ -241,8 +243,11 @@
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Category</label>
+            <label for="new-category" class="text-xs text-muted-foreground"
+              >Category</label
+            >
             <input
+              id="new-category"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={newCategory}
               placeholder="e.g. Politics, Sports, Markets, Tech"
@@ -251,8 +256,11 @@
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Description</label>
+            <label for="new-description" class="text-xs text-muted-foreground"
+              >Description</label
+            >
             <textarea
+              id="new-description"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               rows="4"
               bind:value={newDescription}
@@ -261,8 +269,11 @@
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Image URL</label>
+            <label for="new-image-url" class="text-xs text-muted-foreground"
+              >Image URL</label
+            >
             <input
+              id="new-image-url"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={newImageUrl}
               placeholder="https://…"
@@ -277,7 +288,7 @@
             {#if newImageUrl.trim()}
               <img
                 src={newImageUrl}
-                alt="Market image preview"
+                alt="Market preview"
                 class="h-40 w-full object-cover"
                 on:error={(e) =>
                   ((e.currentTarget as HTMLImageElement).style.display =
@@ -349,6 +360,7 @@
       aria-modal="true"
       aria-label="Edit Market"
       on:click|stopPropagation
+      on:keydown|stopPropagation
       tabindex="-1"
     >
       <!-- Modal header -->
@@ -368,16 +380,22 @@
         <!-- Left: fields -->
         <div class="space-y-3">
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Title *</label>
+            <label for="edit-title" class="text-xs text-muted-foreground"
+              >Title *</label
+            >
             <input
+              id="edit-title"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={editTitle}
             />
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Category</label>
+            <label for="edit-category" class="text-xs text-muted-foreground"
+              >Category</label
+            >
             <input
+              id="edit-category"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={editCategory}
               list="market-categories"
@@ -386,8 +404,11 @@
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Description</label>
+            <label for="edit-description" class="text-xs text-muted-foreground"
+              >Description</label
+            >
             <textarea
+              id="edit-description"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               rows="4"
               bind:value={editDescription}
@@ -395,8 +416,11 @@
           </div>
 
           <div class="grid gap-1.5">
-            <label class="text-xs text-muted-foreground">Image URL</label>
+            <label for="edit-image-url" class="text-xs text-muted-foreground"
+              >Image URL</label
+            >
             <input
+              id="edit-image-url"
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={editImageUrl}
               placeholder="https://…"
@@ -411,7 +435,7 @@
             {#if editImageUrl.trim()}
               <img
                 src={editImageUrl}
-                alt="Market image preview"
+                alt="Market preview"
                 class="h-40 w-full object-cover"
                 on:error={(e) =>
                   ((e.currentTarget as HTMLImageElement).style.display =

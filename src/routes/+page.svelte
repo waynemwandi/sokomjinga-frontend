@@ -106,10 +106,11 @@
         >Portfolio KES 0.00</a
       >
       <a
-        href="/deposit"
+        href="/portfolio?deposit=1"
         class="ml-3 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-        >Deposit</a
       >
+        Deposit
+      </a>
 
       <!-- Account dropdown -->
       <div class="relative ml-3">
