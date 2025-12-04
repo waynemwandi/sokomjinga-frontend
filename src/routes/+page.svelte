@@ -8,6 +8,7 @@
     Bookmark,
     Gift,
     LogIn,
+    LogOut,
     UserRound,
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
@@ -18,22 +19,11 @@
   let openMenu = false;
 
   const categories = [
-    "Trending",
-    "Breaking News",
-    "New",
+    "All markets",
     "Politics",
-    "Sports",
-    "Kenya",
-    "Tanzania",
-  ];
-  const tags = [
-    "All",
-    "Ruto Presidency",
-    "Kenya vs Morocco",
-    "CHAN",
-    "Nairobi Governor",
-    "Juba",
-    "Sudan",
+    "Crypto",
+    "Finance",
+    "Culture",
   ];
 
   // Helpers ------------------------------------------------------------
@@ -122,12 +112,7 @@
       >
 
       <!-- Account dropdown -->
-      <div
-        class="relative ml-3"
-        on:keydown={(e) => {
-          if (e.key === "Escape") openMenu = false;
-        }}
-      >
+      <div class="relative ml-3">
         <button
           class="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
           aria-haspopup="menu"
@@ -149,28 +134,43 @@
 
         {#if openMenu}
           <div
-            class="absolute right-0 mt-2 w-40 rounded-md border border-border bg-popover shadow-md"
+            class="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-popover shadow-lg p-1 text-sm"
             role="menu"
+            tabindex="-1"
+            on:keydown={(e) => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                openMenu = false;
+              }
+            }}
             on:focusout={(e) => {
               const r = e.currentTarget as HTMLElement;
               if (!r.contains(e.relatedTarget as Node)) openMenu = false;
             }}
           >
+            <!-- Top group -->
             <a
               href="/account"
-              class="block px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+              class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent hover:text-accent-foreground"
               role="menuitem"
               on:click={() => (openMenu = false)}
             >
-              Profile
+              <UserRound class="h-4 w-4" />
+              <span>Profile</span>
             </a>
+
+            <!-- Divider -->
+            <div class="my-1 h-px bg-border/70"></div>
+
+            <!-- Logout -->
             <form method="post" action="/logout">
               <button
                 type="submit"
-                class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-accent"
+                class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-500 hover:bg-accent hover:text-red-600"
                 role="menuitem"
               >
-                Logout
+                <LogOut class="h-4 w-4" />
+                <span>Logout</span>
               </button>
             </form>
           </div>
@@ -212,23 +212,6 @@
           class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
         >
           {c}
-        </button>
-      {/each}
-    </div>
-  </div>
-
-  <!-- secondary tags row -->
-  <div class="border-t border-border/60">
-    <div
-      class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none"
-    >
-      {#each tags as t, i}
-        <button
-          class="shrink-0 rounded-md px-3 py-1.5 text-xs md:text-sm {i === 0
-            ? 'bg-accent text-accent-foreground'
-            : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
-        >
-          {t}
         </button>
       {/each}
     </div>
