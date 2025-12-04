@@ -1,6 +1,7 @@
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
-  import { toggleTheme } from "$lib/theme";
+  import AppHeader from "$lib/components/layout/AppHeader.svelte";
+  // import { toggleTheme } from "$lib/theme";
   import {
     ChartNoAxesCombined,
     Sun,
@@ -57,167 +58,22 @@
 <!-- ===========================
     Header
   =========================== -->
-<header
-  class="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur"
->
+<AppHeader {isAuthed} />
+
+<!-- primary nav row (categories) -->
+<div class="border-t border-border/60">
   <div
-    class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-[64px] flex items-center gap-3"
+    class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none"
   >
-    <a href="/" class="inline-flex items-center gap-2">
-      <span
-        class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground h-7 w-7"
-      >
-        <ChartNoAxesCombined class="h-4 w-4" />
-      </span>
-      <span class="font-semibold">SokoMjinga</span>
-    </a>
-
-    <!-- search -->
-    <div class="ml-3 flex-1">
-      <div class="relative">
-        <input
-          class="w-full sm:w-[360px] md:w-[480px] lg:w-[560px] xl:w-[640px] rounded-md border border-border bg-input px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="Search markets"
-        />
-      </div>
-    </div>
-
-    <!-- Theme Toggle -->
-    <div class="ml-auto flex items-center gap-2">
+    {#each categories as c}
       <button
-        class="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-input hover:bg-card transition"
-        on:click={toggleTheme}
-        aria-label="Toggle theme"
+        class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
       >
-        <Sun
-          class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
-        />
-        <Moon
-          class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-        />
+        {c}
       </button>
-    </div>
-
-    <!-- right actions -->
-    {#if isAuthed}
-      <a
-        href="/portfolio"
-        class="hidden lg:inline-flex text-sm text-muted-foreground hover:text-foreground"
-        >Portfolio KES 0.00</a
-      >
-      <a
-        href="/portfolio?deposit=1"
-        class="ml-3 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-      >
-        Deposit
-      </a>
-
-      <!-- Account dropdown -->
-      <div class="relative ml-3">
-        <button
-          class="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
-          aria-haspopup="menu"
-          aria-expanded={openMenu}
-          on:click={() => (openMenu = !openMenu)}
-        >
-          My Account
-        </button>
-
-        <button
-          class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
-          aria-label="Account"
-          aria-haspopup="menu"
-          aria-expanded={openMenu}
-          on:click={() => (openMenu = !openMenu)}
-        >
-          <UserRound class="h-4 w-4" />
-        </button>
-
-        {#if openMenu}
-          <div
-            class="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-popover shadow-lg p-1 text-sm"
-            role="menu"
-            tabindex="-1"
-            on:keydown={(e) => {
-              if (e.key === "Escape") {
-                e.stopPropagation();
-                openMenu = false;
-              }
-            }}
-            on:focusout={(e) => {
-              const r = e.currentTarget as HTMLElement;
-              if (!r.contains(e.relatedTarget as Node)) openMenu = false;
-            }}
-          >
-            <!-- Top group -->
-            <a
-              href="/account"
-              class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              role="menuitem"
-              on:click={() => (openMenu = false)}
-            >
-              <UserRound class="h-4 w-4" />
-              <span>Profile</span>
-            </a>
-
-            <!-- Divider -->
-            <div class="my-1 h-px bg-border/70"></div>
-
-            <!-- Logout -->
-            <form method="post" action="/logout">
-              <button
-                type="submit"
-                class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-500 hover:bg-accent hover:text-red-600"
-                role="menuitem"
-              >
-                <LogOut class="h-4 w-4" />
-                <span>Logout</span>
-              </button>
-            </form>
-          </div>
-        {/if}
-      </div>
-    {:else}
-      <a
-        href="/login"
-        class="ml-2 hidden sm:inline-flex rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-        >Log In</a
-      >
-      <a
-        href="/login"
-        class="ml-2 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-        >Sign Up</a
-      >
-      <a
-        href="/login"
-        class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
-        aria-label="Log In"
-      >
-        <LogIn class="h-4 w-4" />
-      </a>
-      <a
-        href="/login"
-        class="ml-2 inline-flex md:hidden rounded-md bg-primary px-2 py-2 text-xs text-primary-foreground hover:opacity-90"
-        >Sign Up</a
-      >
-    {/if}
+    {/each}
   </div>
-
-  <!-- primary nav row -->
-  <div class="border-t border-border/60">
-    <div
-      class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none"
-    >
-      {#each categories as c}
-        <button
-          class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-        >
-          {c}
-        </button>
-      {/each}
-    </div>
-  </div>
-</header>
+</div>
 
 <!-- ===========================
     Grid CONTENT

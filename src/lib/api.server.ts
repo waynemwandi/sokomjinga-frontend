@@ -1,5 +1,4 @@
 // src/lib/api.server.ts
-// // server-only API client
 import { env as priv } from "$env/dynamic/private";
 import { env as pub } from "$env/dynamic/public";
 
@@ -44,7 +43,16 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export const API_BASE = BASE;
 export const getJSON = j;
 
+// -----------------
+// Auth API
+// -----------------
+export const Auth = {
+  me: (init?: RequestInit) => j<any>("/auth/me", init),
+};
+
+// -----------------
 // Markets API - CRUD and close
+// -----------------
 export const Markets = {
   list: (init?: RequestInit) => j<any[]>("/markets", init),
   get: (id: string, init?: RequestInit) => j<any>(`/markets/${id}`, init),
@@ -85,7 +93,9 @@ export const Markets = {
     }),
 };
 
+// -----------------
 // Market Outcomes API - CRUD
+// -----------------
 export const Outcomes = {
   create: (marketId: string, payload: any, init?: RequestInit) =>
     j<any>(`/markets/${marketId}/outcomes`, {
@@ -119,16 +129,25 @@ export const Outcomes = {
     }),
 };
 
+// -----------------
 // Wallet API
+// -----------------
 export const Wallet = {
   // current user's wallet summary
+  me: (init?: RequestInit) =>
+    j<{
+      balance_cents: number;
+      currency: string;
+    }>("/wallet/me", init),
+
+  // alias for older code if you used Wallet.get()
   get: (init?: RequestInit) =>
     j<{
       balance_cents: number;
       currency: string;
     }>("/wallet/me", init),
 
-  // Dev-only "deposit":
+  // Dev-only deposit flow:
   // 1) POST /wallet/deposits  (pending)
   // 2) POST /wallet/deposits/{id}/confirm  (credits wallet)
   deposit: async (payload: { amount_cents: number }, init?: RequestInit) => {
@@ -171,7 +190,11 @@ export const Wallet = {
   },
 };
 
+// -----------------
 // "Me" API – stats, bets, positions
+// -----------------
 export const Me = {
+  stats: (init?: RequestInit) => j<any>("/me/stats", init),
   bets: (init?: RequestInit) => j<any[]>("/me/bets", init),
+  positions: (init?: RequestInit) => j<any>("/me/positions", init),
 };
