@@ -40,15 +40,6 @@
     return null;
   };
 
-  const priceLabel = (o: any) => {
-    if (typeof o?.price_cents === "number") return `${o.price_cents}¢`;
-    if (typeof o?.price_kes === "number")
-      return `KES ${new Intl.NumberFormat("en-KE").format(o.price_kes)}`;
-    if (typeof o?.price === "number")
-      return `KES ${new Intl.NumberFormat("en-KE").format(o.price)}`;
-    return "—";
-  };
-
   const volLabel = (m: any) => (m.volume ? m.volume : "— Vol.");
   const FALLBACK_CHANCE = 54;
 
@@ -148,17 +139,15 @@
             <div class="grid grid-cols-2 gap-3">
               <!-- YES -->
               <button type="button" class="btn btn-yes" on:click|preventDefault>
-                <div class="flex items-center justify-between w-full">
+                <div class="flex items-center justify-center w-full">
                   <span>Yes</span>
-                  <span class="font-semibold">{priceLabel(yesOf(m))}</span>
                 </div>
               </button>
 
               <!-- NO -->
               <button type="button" class="btn btn-no" on:click|preventDefault>
-                <div class="flex items-center justify-between w-full">
+                <div class="flex items-center justify-center w-full">
                   <span>No</span>
-                  <span class="font-semibold">{priceLabel(noOf(m))}</span>
                 </div>
               </button>
             </div>

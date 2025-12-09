@@ -1,23 +1,23 @@
-<!-- src/routes/public/market/[id]/page.svelte -->
+<!-- src/routes/(public)/market/[id]/+page.svelte -->
 
 <script lang="ts">
-  import { toggleTheme } from "$lib/theme";
-  import {
-    ChartNoAxesCombined,
-    Sun,
-    Moon,
-    LogIn,
-    UserRound,
-  } from "lucide-svelte";
+  import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
 
   export let data: PageData;
 
-  // Wire this to real auth later if you like
-  let isAuthed = true;
-
   const market = data.market;
   const outcomes = data.outcomes ?? [];
+  const isAuthed = data.isAuthed ?? false;
+
+  // same categories as homepage
+  const categories = [
+    "All markets",
+    "Politics",
+    "Crypto",
+    "Finance",
+    "Culture",
+  ];
 
   // helpers -------------------------------------------------------------
   const priceOf = (o: any) => {
@@ -27,154 +27,34 @@
     if (typeof o?.cents === "number") return o.cents;
     return 0;
   };
+
   const formatKES = (v: number) =>
     `KES ${new Intl.NumberFormat("en-KE").format(v)}`;
 
   // detect YES/NO to style buttons with .btn-yes / .btn-no from app.css
   const isYes = (o: any) => /^(yes|true)$/i.test(o?.name ?? o?.label ?? "");
   const isNo = (o: any) => /^(no|false)$/i.test(o?.name ?? o?.label ?? "");
-
-  // same nav labels as home (purely visual)
-  const categories = [
-    "Trending",
-    "Breaking News",
-    "New",
-    "Politics",
-    "Sports",
-    "Kenya",
-    "Tanzania",
-  ];
-  const tags = [
-    "All",
-    "Ruto Presidency",
-    "Kenya vs Morocco",
-    "CHAN",
-    "Nairobi Governor",
-    "Juba",
-    "Sudan",
-  ];
 </script>
 
 <!-- ===========================
-  Header (same look as home)
+  Header (shared with homepage)
 =========================== -->
-<header
-  class="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur"
->
+<AppHeader {isAuthed} />
+
+<!-- primary nav row (same as homepage) -->
+<div class="border-t border-border/60">
   <div
-    class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-[64px] flex items-center gap-3"
+    class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none"
   >
-    <a href="/" class="inline-flex items-center gap-2">
-      <span
-        class="inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground h-7 w-7"
-      >
-        <ChartNoAxesCombined class="h-4 w-4" />
-      </span>
-      <span class="font-semibold">SokoMjinga</span>
-    </a>
-
-    <div class="ml-3 flex-1">
-      <div class="relative">
-        <input
-          class="w-full sm:w-[360px] md:w-[480px] lg:w-[560px] xl:w-[640px] rounded-md border border-border bg-input px-3 py-2 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          placeholder="Search markets"
-        />
-      </div>
-    </div>
-
-    <div class="ml-auto flex items-center gap-2">
+    {#each categories as c}
       <button
-        class="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-input hover:bg-card transition"
-        on:click={toggleTheme}
-        aria-label="Toggle theme"
+        class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
       >
-        <Sun
-          class="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0"
-        />
-        <Moon
-          class="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100"
-        />
+        {c}
       </button>
-    </div>
-
-    {#if isAuthed}
-      <a
-        href="/portfolio"
-        class="hidden lg:inline-flex text-sm text-muted-foreground hover:text-foreground"
-        >Portfolio KES 0.00</a
-      >
-      <a
-        href="/deposit"
-        class="ml-3 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-        >Deposit</a
-      >
-      <a
-        href="/account"
-        class="ml-3 hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
-        >My Account</a
-      >
-      <a
-        href="/account"
-        class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
-        aria-label="Account"
-      >
-        <UserRound class="h-4 w-4" />
-      </a>
-    {:else}
-      <a
-        href="/login"
-        class="ml-2 hidden sm:inline-flex rounded-md border border-border bg-card px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-        >Log In</a
-      >
-      <a
-        href="/signup"
-        class="ml-2 hidden md:inline-flex rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-        >Sign Up</a
-      >
-      <a
-        href="/login"
-        class="ml-2 inline-flex sm:hidden items-center justify-center rounded-md border border-border bg-card p-2"
-        aria-label="Log In"
-      >
-        <LogIn class="h-4 w-4" />
-      </a>
-      <a
-        href="/signup"
-        class="ml-2 inline-flex md:hidden rounded-md bg-primary px-2 py-2 text-xs text-primary-foreground hover:opacity-90"
-        >Sign Up</a
-      >
-    {/if}
+    {/each}
   </div>
-
-  <div class="border-t border-border/60">
-    <div
-      class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none"
-    >
-      {#each categories as c}
-        <button
-          class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-          >{c}</button
-        >
-      {/each}
-    </div>
-  </div>
-
-  <div class="border-t border-border/60">
-    <div
-      class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none"
-    >
-      {#each tags as t, i}
-        <button
-          class="shrink-0 rounded-md px-3 py-1.5 text-xs md:text-sm {i === 0
-            ? 'bg-accent text-accent-foreground'
-            : 'text-muted-foreground hover:text-foreground hover:bg-accent'}"
-        >
-          {t}
-        </button>
-      {/each}
-    </div>
-  </div>
-</header>
+</div>
 
 <!-- ===========================
   Content
@@ -248,7 +128,9 @@
             {#each outcomes as o}
               <!-- Use .btn + .btn-yes / .btn-no from app.css -->
               <button
-                class={`w-full btn ${isYes(o) ? "btn-yes" : isNo(o) ? "btn-no" : ""} flex items-center justify-between`}
+                class={`w-full btn ${
+                  isYes(o) ? "btn-yes" : isNo(o) ? "btn-no" : ""
+                } flex items-center justify-between`}
                 aria-label={`Buy ${o.name ?? o.label ?? "Outcome"}`}
               >
                 <span>{o.name ?? o.label ?? "Outcome"}</span>
@@ -261,15 +143,15 @@
         </div>
 
         <div class="p-3 border-t border-border/60 flex gap-2">
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs"
-            >+KES 100</button
-          >
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs"
-            >+KES 500</button
-          >
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs"
-            >+KES 1,000</button
-          >
+          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
+            +KES 100
+          </button>
+          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
+            +KES 500
+          </button>
+          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
+            +KES 1,000
+          </button>
           <button class="rounded-md bg-neutral px-2 py-1 text-xs">Max</button>
         </div>
       </div>
