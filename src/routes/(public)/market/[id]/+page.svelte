@@ -4,12 +4,70 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
 
-  export let data: PageData & { portfolioLabel?: string | null };
+  export let data: PageData & { priceHistory?: any };
 
   const market = data.market;
   const outcomes = data.outcomes ?? [];
   const isAuthed = data.isAuthed ?? false;
+  const priceHistory = data.priceHistory;
+
   const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
+  // const portfolioHref = data.portfolioHref ?? "/portfolio";
+  // const depositHref = data.depositHref ?? "/portfolio?deposit=1";
+
+  type Point = { x: number; y: number };
+
+  // build a single line series (Yes) from history
+  const chartSeries = (() => {
+    if (!priceHistory?.outcomes?.length) return [];
+
+    const yes = priceHistory.outcomes.find((o: any) =>
+      /^(yes|true)$/i.test(o.label ?? "")
+    );
+    if (!yes || !yes.points?.length) return [];
+
+    const pts = yes.points as { price_cents: number }[];
+
+    if (pts.length === 1) {
+      return [
+        {
+          outcome_id: yes.outcome_id,
+          points: [{ x: 50, y: 20 }], // center single point
+          areaPath: "",
+        },
+      ];
+    }
+
+    const minPrice = 0;
+    const maxPrice = 100;
+    const range = maxPrice - minPrice || 1;
+    const n = pts.length;
+
+    const mapped: Point[] = pts.map((p, i) => {
+      const t = n === 1 ? 0 : i / (n - 1);
+      const x = 5 + t * 90; // padding
+      const norm = (p.price_cents - minPrice) / range;
+      const y = 35 - norm * 25; // invert for SVG coords
+      return { x, y };
+    });
+
+    const first = mapped[0];
+    const last = mapped[mapped.length - 1];
+    const areaPath = [
+      `M ${first.x} 35`,
+      ...mapped.map((p) => `L ${p.x} ${p.y}`),
+      `L ${last.x} 35`,
+      "Z",
+    ].join(" ");
+
+    return [
+      {
+        outcome_id: yes.outcome_id,
+        points: mapped,
+        areaPath,
+      },
+    ];
+  })();
 
   // same categories as homepage
   const categories = [
@@ -35,13 +93,43 @@
   // detect YES/NO to style buttons with .btn-yes / .btn-no from app.css
   const isYes = (o: any) => /^(yes|true)$/i.test(o?.name ?? o?.label ?? "");
   const isNo = (o: any) => /^(no|false)$/i.test(o?.name ?? o?.label ?? "");
+
+  let selectedSide: "yes" | "no" = "yes";
+  // --- Buy panel state (selected side + shares) -----------------------
+  const yesOutcome: any = outcomes.find((o: any) => isYes(o));
+  const noOutcome: any = outcomes.find((o: any) => isNo(o));
+
+  let selectedOutcome: any =
+    yesOutcome ?? noOutcome ?? (outcomes.length ? outcomes[0] : null);
+
+  let shares = 1;
+
+  const selectOutcome = (o: any) => {
+    selectedOutcome = o;
+
+    if (o === yesOutcome) {
+      selectedSide = "yes";
+    } else if (o === noOutcome) {
+      selectedSide = "no";
+    }
+  };
+
+  const incShares = () => {
+    shares = shares + 1;
+  };
+
+  const decShares = () => {
+    if (shares > 1) shares = shares - 1;
+  };
+
+  $: pricePerShare = selectedOutcome ? priceOf(selectedOutcome) : 0;
+  $: totalKES = shares * pricePerShare;
 </script>
 
 <!-- ===========================
   Header (shared with homepage)
 =========================== -->
 <AppHeader {isAuthed} {portfolioLabel} />
-
 <!-- primary nav row (same as homepage) -->
 <div class="border-t border-border/60">
   <div
@@ -96,19 +184,104 @@
 
   <!-- two columns -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <!-- left -->
+    <!-- left: chart + context -->
     <section class="md:col-span-2 space-y-6">
+      <!-- Price chart card -->
       <div class="rounded-xl border border-border bg-card">
         <div class="p-4 border-b border-border/60 text-sm font-medium">
           Price chart
         </div>
-        <div
-          class="h-[360px] m-4 rounded border border-dashed border-border/70 bg-muted/10 flex items-center justify-center text-sm text-muted-foreground"
-        >
-          Chart placeholder
+        <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
+          <div
+            class="h-full rounded-lg bg-background/40 border border-border/40 p-4"
+          >
+            {#if priceHistory && priceHistory.outcomes?.length}
+              {#key priceHistory.market_id}
+                <svg viewBox="0 0 100 40" class="w-full h-full">
+                  <!-- subtle grid -->
+                  <defs>
+                    <pattern
+                      id="chart-grid"
+                      x="0"
+                      y="0"
+                      width="10"
+                      height="10"
+                      patternUnits="userSpaceOnUse"
+                    >
+                      <path
+                        d="M 10 0 L 0 0 0 10"
+                        fill="none"
+                        stroke="rgba(148, 163, 184, 0.2)"
+                        stroke-width="0.2"
+                      />
+                    </pattern>
+                  </defs>
+
+                  <rect
+                    x="0"
+                    y="0"
+                    width="100"
+                    height="40"
+                    fill="url(#chart-grid)"
+                    rx="2"
+                  />
+
+                  <!-- YES line only for now -->
+                  {#each chartSeries as series (series.outcome_id)}
+                    {#if series.points.length > 1}
+                      <!-- area under line -->
+                      <path
+                        d={series.areaPath}
+                        fill="rgba(45, 212, 191, 0.12)"
+                      />
+                      <!-- main line -->
+                      <polyline
+                        points={series.points
+                          .map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`)
+                          .join(" ")}
+                        fill="none"
+                        stroke="rgb(45, 212, 191)"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <!-- last point dot -->
+                      {#if series.points.length}
+                        {#await Promise.resolve(series.points[series.points.length - 1]) then last}
+                          <circle
+                            cx={last.x}
+                            cy={last.y}
+                            r="1.4"
+                            fill="rgb(45, 212, 191)"
+                            stroke="rgb(15, 118, 110)"
+                            stroke-width="0.5"
+                          />
+                        {/await}
+                      {/if}
+                    {:else}
+                      <!-- single point case -->
+                      <circle
+                        cx={series.points[0].x}
+                        cy={series.points[0].y}
+                        r="1.6"
+                        fill="rgb(45, 212, 191)"
+                      />
+                    {/if}
+                  {/each}
+                </svg>
+              {/key}
+            {:else}
+              <div
+                class="h-full flex items-center justify-center text-sm text-muted-foreground"
+              >
+                No price history yet.
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
 
+      <!-- Market context card -->
       <div class="rounded-xl border border-border bg-card">
         <div class="p-4 border-b border-border/60 text-sm font-medium">
           Market Context
@@ -119,43 +292,157 @@
       </div>
     </section>
 
-    <!-- right -->
+    <!-- right: Buy panel -->
     <aside class="md:col-span-1">
-      <div class="rounded-xl border border-border bg-card overflow-hidden">
-        <div class="p-4 border-b border-border/60 text-sm font-medium">Buy</div>
+      <form
+        method="POST"
+        action="?/buy"
+        class="rounded-xl border border-border bg-card overflow-hidden"
+      >
+        <div
+          class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
+        >
+          <span>Buy</span>
+          {#if selectedOutcome}
+            <span class="text-xs text-muted-foreground">
+              Price / share: {formatKES(pricePerShare)}
+            </span>
+          {/if}
+        </div>
 
-        <div class="p-3 space-y-3">
+        <!-- hidden fields that go to the buy action -->
+        <input type="hidden" name="side" value={selectedSide} />
+        <input type="hidden" name="shares" value={shares} />
+        <!-- pricePerShare is in KES; convert to cents for the backend -->
+        <input
+          type="hidden"
+          name="price_cents"
+          value={Math.round(pricePerShare * 100)}
+        />
+
+        <div class="p-4 space-y-5">
           {#if outcomes.length}
-            {#each outcomes as o}
-              <!-- Use .btn + .btn-yes / .btn-no from app.css -->
-              <button
-                class={`w-full btn ${
-                  isYes(o) ? "btn-yes" : isNo(o) ? "btn-no" : ""
-                } flex items-center justify-between`}
-                aria-label={`Buy ${o.name ?? o.label ?? "Outcome"}`}
+            <!-- YES / NO toggle row -->
+            <div class="grid grid-cols-2 gap-2">
+              {#if yesOutcome}
+                <button
+                  type="button"
+                  class={`btn flex flex-col items-center justify-center text-sm ${
+                    selectedOutcome === yesOutcome
+                      ? "btn-yes"
+                      : "bg-card border-border"
+                  }`}
+                  on:click={() => selectOutcome(yesOutcome)}
+                >
+                  <span>Yes</span>
+                  <span class="mt-0.5 text-[11px] opacity-80">
+                    {formatKES(priceOf(yesOutcome))}
+                  </span>
+                </button>
+              {/if}
+
+              {#if noOutcome}
+                <button
+                  type="button"
+                  class={`btn flex flex-col items-center justify-center text-sm ${
+                    selectedOutcome === noOutcome
+                      ? "btn-no"
+                      : "bg-card border-border"
+                  }`}
+                  on:click={() => selectOutcome(noOutcome)}
+                >
+                  <span>No</span>
+                  <span class="mt-0.5 text-[11px] opacity-80">
+                    {formatKES(priceOf(noOutcome))}
+                  </span>
+                </button>
+              {/if}
+            </div>
+
+            <!-- Shares selector -->
+            <div class="space-y-2">
+              <div
+                class="flex items-center justify-between text-xs text-muted-foreground"
               >
-                <span>{o.name ?? o.label ?? "Outcome"}</span>
-                <span class="font-semibold">{formatKES(priceOf(o))}</span>
+                <span>Shares</span>
+                <span>Price / share: {formatKES(pricePerShare)}</span>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
+                  on:click={decShares}
+                  aria-label="Decrease shares"
+                >
+                  –
+                </button>
+
+                <div
+                  class="flex-1 text-center rounded-md bg-input py-2 text-sm font-medium"
+                >
+                  {shares}
+                </div>
+
+                <button
+                  type="button"
+                  class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
+                  on:click={incShares}
+                  aria-label="Increase shares"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick share presets -->
+            <div class="flex gap-2 pt-1">
+              <button
+                type="button"
+                class="rounded-md bg-input px-2 py-1 text-xs"
+                on:click={() => (shares = shares + 1)}
+              >
+                +1
               </button>
-            {/each}
+              <button
+                type="button"
+                class="rounded-md bg-input px-2 py-1 text-xs"
+                on:click={() => (shares = shares + 5)}
+              >
+                +5
+              </button>
+              <button
+                type="button"
+                class="rounded-md bg-input px-2 py-1 text-xs"
+                on:click={() => (shares = shares + 10)}
+              >
+                +10
+              </button>
+            </div>
+
+            <!-- Total cost -->
+            <div
+              class="flex items-center justify-between pt-3 text-xs text-muted-foreground"
+            >
+              <span>Estimated cost</span>
+              <span class="text-sm font-semibold text-foreground">
+                {formatKES(totalKES)}
+              </span>
+            </div>
+
+            <!-- Submit -->
+            <button
+              type="submit"
+              class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              disabled={!selectedOutcome || !shares || pricePerShare <= 0}
+            >
+              Place order · {formatKES(totalKES)}
+            </button>
           {:else}
             <div class="text-xs text-muted-foreground">No outcomes yet.</div>
           {/if}
         </div>
-
-        <div class="p-3 border-t border-border/60 flex gap-2">
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
-            +KES 100
-          </button>
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
-            +KES 500
-          </button>
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs">
-            +KES 1,000
-          </button>
-          <button class="rounded-md bg-neutral px-2 py-1 text-xs">Max</button>
-        </div>
-      </div>
+      </form>
     </aside>
   </div>
 </main>

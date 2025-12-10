@@ -25,8 +25,17 @@
   let depositError: string | null = null;
   let depositAmount: string | number | null = null;
 
-  $: if ($page.url.searchParams.has("deposit")) {
-    depositOpen = true;
+  $: {
+    const params = $page.url.searchParams;
+
+    if (params.has("deposit")) {
+      depositOpen = true;
+    }
+
+    const amt = params.get("amount");
+    if (amt) {
+      depositAmount = amt;
+    }
   }
 
   const formatKES = (v: number) =>
