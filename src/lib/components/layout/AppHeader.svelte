@@ -1,3 +1,5 @@
+<!-- src/lib/components/layout/AppHeader.svelte -->
+
 <script lang="ts">
   import { toggleTheme } from "$lib/theme";
   import {

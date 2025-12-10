@@ -4,11 +4,12 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
 
-  export let data: PageData;
+  export let data: PageData & { portfolioLabel?: string | null };
 
   const market = data.market;
   const outcomes = data.outcomes ?? [];
   const isAuthed = data.isAuthed ?? false;
+  const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
 
   // same categories as homepage
   const categories = [
@@ -39,7 +40,7 @@
 <!-- ===========================
   Header (shared with homepage)
 =========================== -->
-<AppHeader {isAuthed} />
+<AppHeader {isAuthed} {portfolioLabel} />
 
 <!-- primary nav row (same as homepage) -->
 <div class="border-t border-border/60">

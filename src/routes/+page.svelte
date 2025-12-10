@@ -15,8 +15,14 @@
   import { goto } from "$app/navigation";
 
   // Server data
-  export let data: { isAuthed: boolean; markets: any[] };
+  export let data: {
+    isAuthed: boolean;
+    markets: any[];
+    portfolioLabel?: string | null;
+  };
+
   let isAuthed = data.isAuthed;
+  let portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
   let openMenu = false;
 
   const categories = [
@@ -49,7 +55,7 @@
 <!-- ===========================
     Header
   =========================== -->
-<AppHeader {isAuthed} />
+<AppHeader {isAuthed} {portfolioLabel} />
 
 <!-- primary nav row (categories) -->
 <div class="border-t border-border/60">
