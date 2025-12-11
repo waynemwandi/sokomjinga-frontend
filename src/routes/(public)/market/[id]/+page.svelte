@@ -4,7 +4,10 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
 
-  export let data: PageData & { priceHistory?: any };
+  export let data: PageData & {
+    priceHistory?: any;
+    initialSide?: "yes" | "no" | null;
+  };
 
   const market = data.market;
   const outcomes = data.outcomes ?? [];
@@ -94,13 +97,25 @@
   const isYes = (o: any) => /^(yes|true)$/i.test(o?.name ?? o?.label ?? "");
   const isNo = (o: any) => /^(no|false)$/i.test(o?.name ?? o?.label ?? "");
 
-  let selectedSide: "yes" | "no" = "yes";
   // --- Buy panel state (selected side + shares) -----------------------
   const yesOutcome: any = outcomes.find((o: any) => isYes(o));
   const noOutcome: any = outcomes.find((o: any) => isNo(o));
 
-  let selectedOutcome: any =
-    yesOutcome ?? noOutcome ?? (outcomes.length ? outcomes[0] : null);
+  let selectedSide: "yes" | "no" =
+    (data.initialSide as "yes" | "no" | null) ?? "yes";
+
+  let selectedOutcome: any;
+
+  if (data.initialSide === "yes" && yesOutcome) {
+    selectedSide = "yes";
+    selectedOutcome = yesOutcome;
+  } else if (data.initialSide === "no" && noOutcome) {
+    selectedSide = "no";
+    selectedOutcome = noOutcome;
+  } else {
+    selectedOutcome =
+      yesOutcome ?? noOutcome ?? (outcomes.length ? outcomes[0] : null);
+  }
 
   let shares = 1;
 
@@ -130,6 +145,7 @@
   Header (shared with homepage)
 =========================== -->
 <AppHeader {isAuthed} {portfolioLabel} />
+
 <!-- primary nav row (same as homepage) -->
 <div class="border-t border-border/60">
   <div
@@ -329,7 +345,7 @@
                   type="button"
                   class={`btn flex flex-col items-center justify-center text-sm ${
                     selectedOutcome === yesOutcome
-                      ? "btn-yes"
+                      ? "btn-yes animate-pulse"
                       : "bg-card border-border"
                   }`}
                   on:click={() => selectOutcome(yesOutcome)}
@@ -346,7 +362,7 @@
                   type="button"
                   class={`btn flex flex-col items-center justify-center text-sm ${
                     selectedOutcome === noOutcome
-                      ? "btn-no"
+                      ? "btn-no animate-pulse"
                       : "bg-card border-border"
                   }`}
                   on:click={() => selectOutcome(noOutcome)}

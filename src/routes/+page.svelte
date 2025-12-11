@@ -48,6 +48,19 @@
 
   const volLabel = (m: any) => (m.volume ? m.volume : "— Vol.");
   const FALLBACK_CHANCE = 54;
+  const GAUGE_LENGTH = 141.37; // approx π * r for r ≈ 45
+
+  const gaugeDashOffset = (p: number | null) => {
+    const pct = p ?? FALLBACK_CHANCE;
+    const clamped = Math.max(0, Math.min(100, pct));
+    return GAUGE_LENGTH * (1 - clamped / 100);
+  };
+
+  const gaugeColor = (m: any) => {
+    const pct = chanceOf(m) ?? FALLBACK_CHANCE;
+    // Use your existing CSS vars for yes/no colors
+    return pct < 50 ? "var(--color-no)" : "var(--color-yes)";
+  };
 
   const goLogin = () => goto("/login");
 </script>
@@ -80,9 +93,8 @@
     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
   >
     {#each data.markets as m}
-      <!-- NOTE: if your detail route is /markets/[id], change href to `/markets/${m.id}` -->
       <article
-        class="card group rounded-xl border border-border/70 bg-card/80 shadow-sm hover:border-primary/40 transition-colors"
+        class="card group rounded-xl border border-border/70 bg-card/80 shadow-sm hover:border-primary/40 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
       >
         <a href={`/market/${encodeURIComponent(m.id)}`} class="group block">
           <!-- Thumb + Title + Gauge -->
@@ -123,18 +135,41 @@
 
             <!-- Gauge -->
             {#key m.id}
-              <div class="relative h-11 w-11 shrink-0 mt-0.5">
-                <div
-                  class="gauge"
-                  style={`--_p:${chanceOf(m) ?? FALLBACK_CHANCE}; --_fill: var(${(chanceOf(m) ?? FALLBACK_CHANCE) < 50 ? "--color-no" : "--color-yes"})`}
-                ></div>
+              <div
+                class="relative h-12 w-20 shrink-0 mt-0.5 transition-transform duration-200 group-hover:scale-110"
+              >
+                <svg viewBox="0 0 100 50" class="w-full h-full">
+                  <!-- background track -->
+                  <path
+                    d="M 10 50 A 40 40 0 0 1 90 50"
+                    fill="none"
+                    stroke="rgba(148,163,184,0.25)"
+                    stroke-width="6"
+                    stroke-linecap="round"
+                  />
+                  <!-- active arc -->
+                  <path
+                    d="M 10 50 A 40 40 0 0 1 90 50"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-width="6"
+                    style={`stroke: ${gaugeColor(m)}; stroke-dasharray: ${GAUGE_LENGTH}; stroke-dashoffset: ${gaugeDashOffset(
+                      chanceOf(m)
+                    )};`}
+                  />
+                </svg>
 
+                <!-- text overlay -->
                 <div
-                  class="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] font-semibold"
+                  class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center translate-y-[18px]"
                 >
-                  {chanceOf(m) ?? FALLBACK_CHANCE}<span
-                    class="ml-0.5 text-[10px]">%</span
-                  >
+                  <div class="text-[14px] font-semibold leading-none">
+                    {chanceOf(m) ?? FALLBACK_CHANCE}
+                    <span class="ml-0.5 text-[11px] font-medium">%</span>
+                  </div>
+                  <span class="mt-0.5 text-[12px] text-muted-foreground/90">
+                    chance
+                  </span>
                 </div>
               </div>
             {/key}
@@ -144,14 +179,24 @@
           <div class="px-4 lg:px-5 pt-3 pb-4">
             <div class="grid grid-cols-2 gap-3">
               <!-- YES -->
-              <button type="button" class="btn btn-yes" on:click|preventDefault>
+              <button
+                type="button"
+                class="btn btn-yes transition-transform active:scale-95"
+                on:click|preventDefault={() =>
+                  goto(`/market/${encodeURIComponent(m.id)}?side=yes`)}
+              >
                 <div class="flex items-center justify-center w-full">
                   <span>Yes</span>
                 </div>
               </button>
 
               <!-- NO -->
-              <button type="button" class="btn btn-no" on:click|preventDefault>
+              <button
+                type="button"
+                class="btn btn-no transition-transform active:scale-95"
+                on:click|preventDefault={() =>
+                  goto(`/market/${encodeURIComponent(m.id)}?side=no`)}
+              >
                 <div class="flex items-center justify-center w-full">
                   <span>No</span>
                 </div>

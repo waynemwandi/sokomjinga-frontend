@@ -2,7 +2,7 @@ import type { Actions, PageServerLoad } from "./$types";
 import { redirect, error } from "@sveltejs/kit";
 import { Markets, Wallet } from "$lib/api.server";
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, url }) => {
   const id = params.id;
 
   const [market, priceHistory, wallet] = await Promise.all([
@@ -18,6 +18,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       : Promise.resolve(null),
   ]);
 
+  const side = url.searchParams.get("side");
+  const initialSide =
+    side === "yes" || side === "no" ? (side as "yes" | "no") : null;
+
   return {
     isAuthed: Boolean(locals.accessToken),
     accessToken: locals.accessToken ?? null,
@@ -25,6 +29,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
     outcomes: market.outcomes ?? [],
     priceHistory,
     wallet,
+    initialSide,
   };
 };
 
