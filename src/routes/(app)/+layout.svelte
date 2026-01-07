@@ -18,6 +18,7 @@
   // comes from +layout.server.ts (it already returns { me })
   export let data: {
     me: { email: string; name?: string; role?: string; is_admin?: boolean };
+    portfolioLabel?: string | null;
   };
 
   const isAdmin =
@@ -322,10 +323,13 @@
        NON-ADMIN APP SHELL
        (used for /account, /portfolio, etc.)
   ============================ -->
-  <div class="min-h-screen bg-background text-foreground flex flex-col">
-    <AppHeader isAuthed={true} />
+  <div class="min-h-screen bg-background text-foreground">
+    <AppHeader
+      isAuthed={true}
+      portfolioLabel={data.portfolioLabel ?? undefined}
+    />
 
-    <main class="flex-1">
+    <main>
       <div
         class="mx-auto w-full max-w-[100%] px-4 py-6 md:max-w-[1400px] lg:max-w-[1600px] 2xl:max-w-[1800px] md:px-6 xl:px-8 2xl:px-10"
       >

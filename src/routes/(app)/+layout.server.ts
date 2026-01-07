@@ -39,7 +39,34 @@ export const load: LayoutServerLoad = async ({ locals, fetch, url }) => {
 
   const me = await res.json(); // whatever shape your /auth/me returns
 
+  let portfolioLabel: string | null = null;
+
+  try {
+    const walletRes = await fetch(`${BASE}/wallet/me`, {
+      headers: {
+        Authorization: `Bearer ${locals.accessToken}`,
+        accept: "application/json",
+      },
+    });
+
+    if (walletRes.ok) {
+      const wallet = await walletRes.json();
+      const amount = (wallet.balance_cents ?? 0) / 100;
+
+      portfolioLabel = new Intl.NumberFormat("en-KE", {
+        style: "currency",
+        currency: "KES",
+        currencyDisplay: "code",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    }
+  } catch {
+    // fail silently, header can render without balance
+  }
+
   return {
     me,
+    portfolioLabel,
   };
 };

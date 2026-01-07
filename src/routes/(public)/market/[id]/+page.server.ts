@@ -1,3 +1,4 @@
+// src/routes/(public)/market/[id]/+page.server.ts
 import type { Actions, PageServerLoad } from "./$types";
 import { redirect, error } from "@sveltejs/kit";
 import { Markets, Wallet } from "$lib/api.server";

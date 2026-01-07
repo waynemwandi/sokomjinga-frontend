@@ -139,6 +139,29 @@
 
   $: pricePerShare = selectedOutcome ? priceOf(selectedOutcome) : 0;
   $: totalKES = shares * pricePerShare;
+
+  const statusMeta = (m: any) => {
+    const s = (m.status ?? "open").toLowerCase();
+
+    if (s === "closed") {
+      return {
+        label: "Closed",
+        cls: "bg-red-500/10 text-red-400 border-red-500/30",
+      };
+    }
+
+    if (s === "open") {
+      return {
+        label: "Open",
+        cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+      };
+    }
+
+    return {
+      label: "Upcoming",
+      cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    };
+  };
 </script>
 
 <!-- ===========================
@@ -187,7 +210,11 @@
         {market.title}
       </h1>
       <div class="mt-1 text-xs text-muted-foreground flex items-center gap-2">
-        <span class="uppercase">{(market.status ?? "open").toUpperCase()}</span>
+        <span
+          class={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${statusMeta(market).cls}`}
+        >
+          {statusMeta(market).label}
+        </span>
         {#if market.category}
           <span
             class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-[11px] bg-primary/10 text-primary"
@@ -231,6 +258,24 @@
                         stroke-width="0.2"
                       />
                     </pattern>
+                    <linearGradient
+                      id="areaGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stop-color="rgb(45,212,191)"
+                        stop-opacity="0.18"
+                      />
+                      <stop
+                        offset="100%"
+                        stop-color="rgb(45,212,191)"
+                        stop-opacity="0.01"
+                      />
+                    </linearGradient>
                   </defs>
 
                   <rect
@@ -246,10 +291,8 @@
                   {#each chartSeries as series (series.outcome_id)}
                     {#if series.points.length > 1}
                       <!-- area under line -->
-                      <path
-                        d={series.areaPath}
-                        fill="rgba(45, 212, 191, 0.12)"
-                      />
+                      <path d={series.areaPath} fill="url(#areaGradient)" />
+
                       <!-- main line -->
                       <polyline
                         points={series.points
@@ -257,7 +300,7 @@
                           .join(" ")}
                         fill="none"
                         stroke="rgb(45, 212, 191)"
-                        stroke-width="1.4"
+                        stroke-width="0.3"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       />
@@ -267,10 +310,8 @@
                           <circle
                             cx={last.x}
                             cy={last.y}
-                            r="1.4"
+                            r="0.6"
                             fill="rgb(45, 212, 191)"
-                            stroke="rgb(15, 118, 110)"
-                            stroke-width="0.5"
                           />
                         {/await}
                       {/if}
@@ -279,7 +320,7 @@
                       <circle
                         cx={series.points[0].x}
                         cy={series.points[0].y}
-                        r="1.6"
+                        r="1.4"
                         fill="rgb(45, 212, 191)"
                       />
                     {/if}

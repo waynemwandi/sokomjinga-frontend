@@ -22,7 +22,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 
       const formatted = new Intl.NumberFormat("en-KE", {
         style: "currency",
-        currency: wallet.currency || "KES",
+        currency: "KES",
+        currencyDisplay: "code",
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(amount);

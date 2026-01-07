@@ -31,12 +31,28 @@ export const load: PageServerLoad = async ({ locals }) => {
 
   const markets = await res.json();
 
-  // Optional: normalize keys used by the UI (ensure image_url exists)
+  // Normalize API response for UI consumption (image_url, volume, safe defaults)
   const normalized = Array.isArray(markets)
-    ? markets.map((m) => ({
-        ...m,
-        image_url: m.image_url ?? m.img ?? null,
-      }))
+    ? markets.map((m) => {
+        const volumeCents = m.volume_cents ?? 0;
+
+        const volumeLabel =
+          volumeCents > 0
+            ? new Intl.NumberFormat("en-KE", {
+                style: "currency",
+                currency: "KES",
+                currencyDisplay: "code",
+                maximumFractionDigits: 0,
+              }).format(volumeCents / 100)
+            : null;
+
+        return {
+          ...m,
+          image_url: m.image_url ?? m.img ?? null,
+          volume_cents: volumeCents,
+          volume_label: volumeLabel,
+        };
+      })
     : [];
 
   return {

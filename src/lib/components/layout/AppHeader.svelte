@@ -72,7 +72,7 @@
       <!-- Right actions when authed -->
       <a
         href={portfolioHref}
-        class="hidden lg:inline-flex text-sm text-muted-foreground hover:text-foreground"
+        class="inline-flex lg:inline-flex sm:hidden text-shadow-sm text-muted-foreground px-2 py-1 hover:text-foreground"
       >
         {portfolioLabel}
       </a>
@@ -87,7 +87,7 @@
       <!-- Account dropdown -->
       <div class="relative ml-3">
         <button
-          class="hidden sm:inline-flex text-sm text-muted-foreground hover:text-foreground"
+          class="hidden sm:inline-flex shrink-0 whitespace-nowrap text-sm text-muted-foreground hover:text-foreground"
           aria-haspopup="menu"
           aria-expanded={openMenu}
           on:click={() => (openMenu = !openMenu)}

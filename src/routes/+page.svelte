@@ -46,7 +46,6 @@
     return null;
   };
 
-  const volLabel = (m: any) => (m.volume ? m.volume : "— Vol.");
   const FALLBACK_CHANCE = 54;
   const GAUGE_LENGTH = 141.37; // approx π * r for r ≈ 45
 
@@ -63,6 +62,56 @@
   };
 
   const goLogin = () => goto("/login");
+
+  const volLabel = (m: any) =>
+    m.volume_cents ? `${formatVolumeKES(m.volume_cents)} Vol.` : "— Vol.";
+
+  const formatVolumeKES = (cents: number) => {
+    const kes = cents / 100;
+
+    if (kes < 10_000) {
+      return `KES ${new Intl.NumberFormat("en-KE").format(kes)}`;
+    }
+
+    if (kes < 1_000_000) {
+      const v = kes / 1_000;
+      return `KES ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}K`;
+    }
+
+    if (kes < 1_000_000_000) {
+      const v = kes / 1_000_000;
+      return `KES ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}M`;
+    }
+
+    const v = kes / 1_000_000_000;
+    return `KES ${v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)}B`;
+  };
+
+  const statusMeta = (m: any) => {
+    const s = (m.status ?? "open").toLowerCase();
+
+    if (s === "closed") {
+      return {
+        label: "Closed",
+        cls: "bg-red-500/10 text-red-400 border-red-500/30",
+      };
+    }
+
+    if (s === "open") {
+      return {
+        label: "Open",
+        cls: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+      };
+    }
+
+    // future-proofing
+    return {
+      label: "Upcoming",
+      cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    };
+  };
+
+  let activeCategory = "All markets";
 </script>
 
 <!-- ===========================
@@ -77,7 +126,13 @@
   >
     {#each categories as c}
       <button
-        class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
+        class={`shrink-0 rounded-md px-3 py-1.5 text-sm transition
+        ${
+          activeCategory === c
+            ? "bg-primary/15 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+        }`}
+        on:click={() => (activeCategory = c)}
       >
         {c}
       </button>
@@ -118,12 +173,18 @@
 
             <!-- Title (show full question) -->
             <div class="min-w-0 flex-1">
-              <!-- Removed line-clamp; allow wrapping; slightly smaller text -->
               <h3
                 class="text-[14px] md:text-[15px] font-semibold leading-snug break-words"
               >
                 {m.title}
               </h3>
+
+              <span
+                class={`mt-1 ml-1 inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] ${statusMeta(m).cls}`}
+              >
+                {statusMeta(m).label}
+              </span>
+
               {#if m.category}
                 <span
                   class="mt-1 inline-flex items-center rounded-md border border-border px-2 py-0.5 text-[11px] bg-primary/10 text-primary"
@@ -139,7 +200,6 @@
                 class="relative h-12 w-20 shrink-0 mt-0.5 transition-transform duration-200 group-hover:scale-110"
               >
                 <svg viewBox="0 0 100 50" class="w-full h-full">
-                  <!-- background track -->
                   <path
                     d="M 10 50 A 40 40 0 0 1 90 50"
                     fill="none"
@@ -147,7 +207,6 @@
                     stroke-width="6"
                     stroke-linecap="round"
                   />
-                  <!-- active arc -->
                   <path
                     d="M 10 50 A 40 40 0 0 1 90 50"
                     fill="none"
@@ -159,7 +218,6 @@
                   />
                 </svg>
 
-                <!-- text overlay -->
                 <div
                   class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center translate-y-[18px]"
                 >
@@ -178,28 +236,22 @@
           <!-- Yes / No buttons -->
           <div class="px-4 lg:px-5 pt-3 pb-4">
             <div class="grid grid-cols-2 gap-3">
-              <!-- YES -->
               <button
                 type="button"
                 class="btn btn-yes transition-transform active:scale-95"
                 on:click|preventDefault={() =>
                   goto(`/market/${encodeURIComponent(m.id)}?side=yes`)}
               >
-                <div class="flex items-center justify-center w-full">
-                  <span>Yes</span>
-                </div>
+                <span>Yes</span>
               </button>
 
-              <!-- NO -->
               <button
                 type="button"
                 class="btn btn-no transition-transform active:scale-95"
                 on:click|preventDefault={() =>
                   goto(`/market/${encodeURIComponent(m.id)}?side=no`)}
               >
-                <div class="flex items-center justify-center w-full">
-                  <span>No</span>
-                </div>
+                <span>No</span>
               </button>
             </div>
           </div>
@@ -209,24 +261,9 @@
             class="px-4 lg:px-5 pb-4 pt-3 flex items-center text-xs text-muted-foreground"
           >
             <span class="flex-1">{volLabel(m)}</span>
-            <div
-              class="flex items-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity"
-            >
-              <button
-                class="p-1 rounded hover:bg-accent"
-                on:click|preventDefault
-                aria-label="Gift"
-              >
-                <Gift class="h-4 w-4" />
-              </button>
-              <button
-                class="p-1 rounded hover:bg-accent"
-                on:click={goLogin}
-                aria-label="Bookmark"
-                title="Bookmark"
-              >
-                <Bookmark class="h-4 w-4" />
-              </button>
+            <div class="flex items-center gap-2 opacity-70">
+              <Gift class="h-4 w-4" />
+              <Bookmark class="h-4 w-4" />
             </div>
           </div>
         </a>
