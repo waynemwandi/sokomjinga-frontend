@@ -82,6 +82,7 @@
     "Culture",
     "Sports",
     "Tech",
+    "Other",
   ];
 
   // helpers -------------------------------------------------------------
@@ -165,6 +166,37 @@
       cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
     };
   };
+
+  const yesOutcomeStats = outcomes.find((o: any) =>
+    /^(yes|true)$/i.test(o?.label ?? o?.name ?? "")
+  );
+
+  const yesPct = yesOutcomeStats ? Math.round(priceOf(yesOutcomeStats)) : null;
+
+  const volumeKES =
+    typeof market.volume_cents === "number"
+      ? market.volume_cents / 100
+      : typeof market.volume_kes === "number"
+        ? market.volume_kes
+        : null;
+
+  const formatCompactKES = (v: number) => {
+    if (v < 10_000) return `KES ${v.toLocaleString("en-KE")}`;
+    if (v < 1_000_000) return `KES ${(v / 1_000).toFixed(1)}K`;
+    if (v < 1_000_000_000) return `KES ${(v / 1_000_000).toFixed(1)}M`;
+    return `KES ${(v / 1_000_000_000).toFixed(1)}B`;
+  };
+
+  const resolveDate = market.resolve_at
+    ? new Date(market.resolve_at).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  // TEMP placeholders (until backend wires real data)
+  const placeholderDeltaPct = 3; // +3%
 </script>
 
 <!-- ===========================
@@ -226,6 +258,36 @@
           >
         {/if}
       </div>
+    </div>
+  </div>
+
+  <!-- Market summary (Polymarket-style) -->
+  <div class="mb-6 flex flex-col gap-2">
+    <!-- YES chance -->
+    <div class="flex items-center gap-3">
+      <div class="text-3xl font-semibold text-primary">
+        {yesPct !== null ? `${yesPct}% chance` : "—"}
+      </div>
+
+      <!-- Placeholder uptick -->
+      <div class="flex items-center gap-1 text-sm font-medium text-emerald-400">
+        <span class="inline-block translate-y-[1px]">▲</span>
+        <span>{placeholderDeltaPct}%</span>
+      </div>
+    </div>
+
+    <!-- Volume + date -->
+    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+      {#if volumeKES}
+        <span>{formatCompactKES(volumeKES)} Vol.</span>
+      {/if}
+
+      {#if resolveDate}
+        <span class="flex items-center gap-1">
+          <span>•</span>
+          <span>{resolveDate}</span>
+        </span>
+      {/if}
     </div>
   </div>
 
