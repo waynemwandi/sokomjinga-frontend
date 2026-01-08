@@ -32,7 +32,7 @@
       >
         <ChartNoAxesCombined class="h-4 w-4" />
       </div>
-      SokoMjinga
+      MaoniMarket
     </a>
 
     <Card.Root>

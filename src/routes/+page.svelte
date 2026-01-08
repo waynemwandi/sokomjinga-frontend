@@ -2,6 +2,8 @@
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   // import { toggleTheme } from "$lib/theme";
+  import { page } from "$app/stores";
+
   import {
     ChartNoAxesCombined,
     Sun,
@@ -19,8 +21,10 @@
     isAuthed: boolean;
     markets: any[];
     portfolioLabel?: string | null;
+    selectedCategory?: string;
   };
-
+  const normalizeCategory = (v?: string | null) =>
+    (v ?? "").trim().toLowerCase();
   let isAuthed = data.isAuthed;
   let portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
   let openMenu = false;
@@ -31,6 +35,8 @@
     "Crypto",
     "Finance",
     "Culture",
+    "Sports",
+    "Tech",
   ];
 
   // Helpers ------------------------------------------------------------
@@ -111,7 +117,18 @@
     };
   };
 
-  let activeCategory = "All markets";
+  $: activeCategory = $page.url.searchParams.get("category") ?? "All markets";
+
+  $: filteredMarkets =
+    activeCategory === "All markets"
+      ? data.markets
+      : data.markets.filter(
+          (m: any) =>
+            normalizeCategory(m.category) === normalizeCategory(activeCategory)
+        );
+
+  console.log("selectedCategory from server:", data.selectedCategory);
+  console.log("activeCategory:", activeCategory);
 </script>
 
 <!-- ===========================
@@ -132,7 +149,10 @@
             ? "bg-primary/15 text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-accent"
         }`}
-        on:click={() => (activeCategory = c)}
+        on:click={() =>
+          goto(
+            c === "All markets" ? "/" : `/?category=${encodeURIComponent(c)}`
+          )}
       >
         {c}
       </button>
@@ -147,7 +167,7 @@
   <div
     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
   >
-    {#each data.markets as m}
+    {#each filteredMarkets as m}
       <article
         class="card group rounded-xl border border-border/70 bg-card/80 shadow-sm hover:border-primary/40 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
       >

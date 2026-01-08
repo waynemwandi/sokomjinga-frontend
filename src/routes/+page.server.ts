@@ -9,7 +9,8 @@ import { env as priv } from "$env/dynamic/private";
 const join = (a: string, b: string) =>
   `${a.replace(/\/$/, "")}/${b.replace(/^\//, "")}`;
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
+  const selectedCategory = url.searchParams.get("category") ?? "All markets";
   // Prefer container-to-container URL for SSR; fall back to public if absolute
   const serverBase =
     priv.PRIVATE_API_BASE ||
@@ -58,5 +59,6 @@ export const load: PageServerLoad = async ({ locals }) => {
   return {
     isAuthed: locals.isAuthed,
     markets: normalized,
+    selectedCategory,
   };
 };

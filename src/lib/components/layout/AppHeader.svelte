@@ -39,7 +39,7 @@
       >
         <ChartNoAxesCombined class="h-4 w-4" />
       </span>
-      <span class="font-semibold">SokoMjinga</span>
+      <span class="font-semibold">MaoniMarket</span>
     </a>
 
     <!-- Search -->

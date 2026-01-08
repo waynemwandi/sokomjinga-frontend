@@ -3,7 +3,7 @@
   import "../app.css";
   import favicon from "$lib/assets/favicon2.svg";
 
-  let title = "SokoMjinga | Kenya's Largest Prediction Market";
+  let title = "MaoniMarket | Kenya's Largest Prediction Market";
   let { children } = $props();
 </script>
 

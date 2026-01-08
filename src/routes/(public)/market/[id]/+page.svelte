@@ -3,6 +3,7 @@
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
+  import { goto } from "$app/navigation";
 
   export let data: PageData & {
     priceHistory?: any;
@@ -79,6 +80,8 @@
     "Crypto",
     "Finance",
     "Culture",
+    "Sports",
+    "Tech",
   ];
 
   // helpers -------------------------------------------------------------
@@ -177,6 +180,7 @@
     {#each categories as c}
       <button
         class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
+        on:click={() => goto(`/?category=${encodeURIComponent(c)}`)}
       >
         {c}
       </button>
