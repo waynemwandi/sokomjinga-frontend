@@ -19,6 +19,9 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
       : Promise.resolve(null),
   ]);
 
+  console.log("priceHistory from server:", priceHistory);
+  console.log("priceHistory.outcomes:", priceHistory?.outcomes);
+
   const side = url.searchParams.get("side");
   const initialSide =
     side === "yes" || side === "no" ? (side as "yes" | "no") : null;

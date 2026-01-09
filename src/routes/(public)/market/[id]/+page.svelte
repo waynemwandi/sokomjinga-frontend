@@ -4,6 +4,14 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
   import { goto } from "$app/navigation";
+  import { onMount, onDestroy } from "svelte";
+
+  import {
+    createChart,
+    LineSeries,
+    type ISeriesApi,
+    type LineData,
+  } from "lightweight-charts";
 
   export let data: PageData & {
     priceHistory?: any;
@@ -14,6 +22,9 @@
   const outcomes = data.outcomes ?? [];
   const isAuthed = data.isAuthed ?? false;
   const priceHistory = data.priceHistory;
+
+  console.log("CLIENT priceHistory:", priceHistory);
+  console.log("CLIENT priceHistory.outcomes:", priceHistory?.outcomes);
 
   const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
   // const portfolioHref = data.portfolioHref ?? "/portfolio";
@@ -197,11 +208,103 @@
 
   // TEMP placeholders (until backend wires real data)
   const placeholderDeltaPct = 3; // +3%
+
+  let chartEl: HTMLDivElement | null = null;
+  let chart: ReturnType<typeof createChart> | null = null;
+  let series: ISeriesApi<"Line"> | null = null;
+
+  const yesHistory = priceHistory?.outcomes?.find((o: any) =>
+    /^(yes|true)$/i.test(o.label ?? "")
+  );
+
+  console.log("YES history resolved:", yesHistory);
+  console.log("YES history points:", yesHistory?.points);
+
+  const chartData: LineData[] = yesHistory?.points
+    ?.map((p: any, i: number) => ({
+      time: Math.floor(new Date(p.t).getTime() / 1000) + i, // 👈 ensure monotonic
+      value: p.price_cents,
+    }))
+    .sort((a: LineData, b: LineData) => Number(a.time) - Number(b.time));
+
+  console.log("chartData length:", chartData.length);
+  console.log("chartData:", chartData);
+
+  onMount(() => {
+    console.log("chartEl exists:", Boolean(chartEl));
+    console.log("chartEl size:", {
+      width: chartEl?.clientWidth,
+      height: chartEl?.clientHeight,
+    });
+
+    if (!chartEl || chartData.length === 0) return;
+
+    const chart = createChart(chartEl, {
+      layout: {
+        background: { color: "transparent" },
+        textColor: "#94a3b8",
+      },
+      grid: {
+        vertLines: { color: "rgba(148,163,184,0.1)" },
+        horzLines: { color: "rgba(148,163,184,0.1)" },
+      },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+        rightBarStaysOnScroll: true,
+      },
+      rightPriceScale: {
+        borderVisible: false,
+        scaleMargins: { top: 0.15, bottom: 0.15 },
+        autoScale: false,
+      },
+      crosshair: { mode: 1 },
+    });
+
+    const series = chart.addSeries(LineSeries, {
+      color: "#2dd4bf",
+      lineWidth: 2,
+      pointMarkersVisible: false,
+      priceFormat: {
+        type: "custom",
+        formatter: (v: number) => `${Math.round(v)}%`,
+        minMove: 1,
+      },
+    });
+    series.applyOptions({
+      autoscaleInfoProvider: () => ({
+        priceRange: {
+          minValue: 0,
+          maxValue: 100,
+        },
+      }),
+    });
+
+    series.setData(chartData);
+
+    chart.timeScale().fitContent();
+
+    const resize = () => {
+      chart.applyOptions({
+        width: chartEl!.clientWidth,
+        height: chartEl!.clientHeight,
+      });
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.remove();
+    };
+  });
 </script>
 
 <!-- ===========================
-  Header (shared with homepage)
-=========================== -->
+    Header (shared with homepage)
+  =========================== -->
 <AppHeader {isAuthed} {portfolioLabel} />
 
 <!-- primary nav row (same as homepage) -->
@@ -221,8 +324,8 @@
 </div>
 
 <!-- ===========================
-  Content
-=========================== -->
+    Content
+  =========================== -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
   <!-- title + meta -->
   <div class="mb-4 flex items-start gap-4">
@@ -304,95 +407,11 @@
           <div
             class="h-full rounded-lg bg-background/40 border border-border/40 p-4"
           >
-            {#if priceHistory && priceHistory.outcomes?.length}
-              {#key priceHistory.market_id}
-                <svg viewBox="0 0 100 40" class="w-full h-full">
-                  <!-- subtle grid -->
-                  <defs>
-                    <pattern
-                      id="chart-grid"
-                      x="0"
-                      y="0"
-                      width="10"
-                      height="10"
-                      patternUnits="userSpaceOnUse"
-                    >
-                      <path
-                        d="M 10 0 L 0 0 0 10"
-                        fill="none"
-                        stroke="rgba(148, 163, 184, 0.2)"
-                        stroke-width="0.2"
-                      />
-                    </pattern>
-                    <linearGradient
-                      id="areaGradient"
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop
-                        offset="0%"
-                        stop-color="rgb(45,212,191)"
-                        stop-opacity="0.18"
-                      />
-                      <stop
-                        offset="100%"
-                        stop-color="rgb(45,212,191)"
-                        stop-opacity="0.01"
-                      />
-                    </linearGradient>
-                  </defs>
-
-                  <rect
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="40"
-                    fill="url(#chart-grid)"
-                    rx="2"
-                  />
-
-                  <!-- YES line only for now -->
-                  {#each chartSeries as series (series.outcome_id)}
-                    {#if series.points.length > 1}
-                      <!-- area under line -->
-                      <path d={series.areaPath} fill="url(#areaGradient)" />
-
-                      <!-- main line -->
-                      <polyline
-                        points={series.points
-                          .map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)}`)
-                          .join(" ")}
-                        fill="none"
-                        stroke="rgb(45, 212, 191)"
-                        stroke-width="0.3"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      <!-- last point dot -->
-                      {#if series.points.length}
-                        {#await Promise.resolve(series.points[series.points.length - 1]) then last}
-                          <circle
-                            cx={last.x}
-                            cy={last.y}
-                            r="0.6"
-                            fill="rgb(45, 212, 191)"
-                          />
-                        {/await}
-                      {/if}
-                    {:else}
-                      <!-- single point case -->
-                      <circle
-                        cx={series.points[0].x}
-                        cy={series.points[0].y}
-                        r="1.4"
-                        fill="rgb(45, 212, 191)"
-                      />
-                    {/if}
-                  {/each}
-                </svg>
-              {/key}
+            {#if chartData.length}
+              <div
+                bind:this={chartEl}
+                style="width: 100%; height: 300px;"
+              ></div>
             {:else}
               <div
                 class="h-full flex items-center justify-center text-sm text-muted-foreground"
