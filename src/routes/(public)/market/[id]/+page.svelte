@@ -8,9 +8,9 @@
 
   import {
     createChart,
-    LineSeries,
+    AreaSeries,
     type ISeriesApi,
-    type LineData,
+    type AreaData,
   } from "lightweight-charts";
 
   export let data: PageData & {
@@ -211,7 +211,7 @@
 
   let chartEl: HTMLDivElement | null = null;
   let chart: ReturnType<typeof createChart> | null = null;
-  let series: ISeriesApi<"Line"> | null = null;
+  let series: ISeriesApi<"Area"> | null = null;
 
   const yesHistory = priceHistory?.outcomes?.find((o: any) =>
     /^(yes|true)$/i.test(o.label ?? "")
@@ -220,12 +220,14 @@
   console.log("YES history resolved:", yesHistory);
   console.log("YES history points:", yesHistory?.points);
 
-  const chartData: LineData[] = yesHistory?.points
-    ?.map((p: any, i: number) => ({
-      time: Math.floor(new Date(p.t).getTime() / 1000) + i, // 👈 ensure monotonic
-      value: p.price_cents,
-    }))
-    .sort((a: LineData, b: LineData) => Number(a.time) - Number(b.time));
+  const chartData: AreaData[] = yesHistory?.points?.length
+    ? yesHistory.points
+        .map((p: any, i: number) => ({
+          time: Math.floor(new Date(p.t).getTime() / 1000) + i,
+          value: p.price_cents,
+        }))
+        .sort((a: AreaData, b: AreaData) => Number(a.time) - Number(b.time))
+    : [];
 
   console.log("chartData length:", chartData.length);
   console.log("chartData:", chartData);
@@ -262,10 +264,12 @@
       crosshair: { mode: 1 },
     });
 
-    const series = chart.addSeries(LineSeries, {
-      color: "#2dd4bf",
+    const series = chart.addSeries(AreaSeries, {
+      lineColor: "#2dd4bf",
       lineWidth: 2,
-      pointMarkersVisible: false,
+      topColor: "rgba(45, 212, 191, 0.35)", // near the line
+      bottomColor: "rgba(45, 212, 191, 0.02)", // fades to nothing
+
       priceFormat: {
         type: "custom",
         formatter: (v: number) => `${Math.round(v)}%`,
@@ -400,9 +404,9 @@
     <section class="md:col-span-2 space-y-6">
       <!-- Price chart card -->
       <div class="rounded-xl border border-border bg-card">
-        <div class="p-4 border-b border-border/60 text-sm font-medium">
+        <!-- <div class="p-4 border-b border-border/60 text-sm font-medium">
           Price chart
-        </div>
+        </div> -->
         <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
           <div
             class="h-full rounded-lg bg-background/40 border border-border/40 p-4"
@@ -447,7 +451,9 @@
           <span>Buy</span>
           {#if selectedOutcome}
             <span class="text-xs text-muted-foreground">
-              Price / share: {formatKES(pricePerShare)}
+              Price per share: <span class="text-primary"
+                >{formatKES(pricePerShare)}</span
+              >
             </span>
           {/if}
         </div>
@@ -504,7 +510,7 @@
             <!-- Shares selector -->
             <div class="space-y-2">
               <div
-                class="flex items-center justify-between text-xs text-muted-foreground"
+                class="flex items-center justify-between text-xs text-primary-foreground"
               >
                 <span>Shares</span>
                 <span>Price / share: {formatKES(pricePerShare)}</span>

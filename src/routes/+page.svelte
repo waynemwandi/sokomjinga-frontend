@@ -121,14 +121,15 @@
   $: activeCategory =
     $page.url.searchParams.get("category")?.trim() || "All markets";
 
-  $: filteredMarkets =
+  $: filteredMarkets = (
     activeCategory === "All markets"
       ? data.markets
       : data.markets.filter(
           (m: any) =>
             m.category &&
             normalizeCategory(m.category) === normalizeCategory(activeCategory)
-        );
+        )
+  ).filter((m: any) => (m.status ?? "open").toLowerCase() !== "closed");
 </script>
 
 <!-- ===========================
