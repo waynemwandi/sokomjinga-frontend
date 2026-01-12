@@ -6,13 +6,6 @@
   import { goto } from "$app/navigation";
   import { onMount, onDestroy } from "svelte";
 
-  import {
-    createChart,
-    AreaSeries,
-    type ISeriesApi,
-    type AreaData,
-  } from "lightweight-charts";
-
   export let data: PageData & {
     priceHistory?: any;
     initialSide?: "yes" | "no" | null;
@@ -211,7 +204,7 @@
 
   let chartEl: HTMLDivElement | null = null;
   let chart: ReturnType<typeof createChart> | null = null;
-  let series: ISeriesApi<"Area"> | null = null;
+  let series: any = null;
 
   const yesHistory = priceHistory?.outcomes?.find((o: any) =>
     /^(yes|true)$/i.test(o.label ?? "")
@@ -220,26 +213,22 @@
   console.log("YES history resolved:", yesHistory);
   console.log("YES history points:", yesHistory?.points);
 
-  const chartData: AreaData[] = yesHistory?.points?.length
+  const chartData = yesHistory?.points?.length
     ? yesHistory.points
         .map((p: any, i: number) => ({
           time: Math.floor(new Date(p.t).getTime() / 1000) + i,
           value: p.price_cents,
         }))
-        .sort((a: AreaData, b: AreaData) => Number(a.time) - Number(b.time))
+        .sort((a: any, b: any) => Number(a.time) - Number(b.time))
     : [];
 
   console.log("chartData length:", chartData.length);
   console.log("chartData:", chartData);
 
-  onMount(() => {
-    console.log("chartEl exists:", Boolean(chartEl));
-    console.log("chartEl size:", {
-      width: chartEl?.clientWidth,
-      height: chartEl?.clientHeight,
-    });
-
+  onMount(async () => {
     if (!chartEl || chartData.length === 0) return;
+
+    const { createChart } = await import("lightweight-charts");
 
     const chart = createChart(chartEl, {
       layout: {
@@ -254,55 +243,22 @@
         borderVisible: false,
         timeVisible: true,
         secondsVisible: false,
-        rightBarStaysOnScroll: true,
       },
       rightPriceScale: {
         borderVisible: false,
         scaleMargins: { top: 0.15, bottom: 0.15 },
-        autoScale: false,
       },
       crosshair: { mode: 1 },
     });
 
-    const series = chart.addSeries(AreaSeries, {
+    const series = chart.addAreaSeries({
       lineColor: "#2dd4bf",
-      lineWidth: 2,
-      topColor: "rgba(45, 212, 191, 0.35)", // near the line
-      bottomColor: "rgba(45, 212, 191, 0.02)", // fades to nothing
-
-      priceFormat: {
-        type: "custom",
-        formatter: (v: number) => `${Math.round(v)}%`,
-        minMove: 1,
-      },
-    });
-    series.applyOptions({
-      autoscaleInfoProvider: () => ({
-        priceRange: {
-          minValue: 0,
-          maxValue: 100,
-        },
-      }),
+      topColor: "rgba(45,212,191,0.35)",
+      bottomColor: "rgba(45,212,191,0.02)",
     });
 
     series.setData(chartData);
-
     chart.timeScale().fitContent();
-
-    const resize = () => {
-      chart.applyOptions({
-        width: chartEl!.clientWidth,
-        height: chartEl!.clientHeight,
-      });
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    return () => {
-      window.removeEventListener("resize", resize);
-      chart.remove();
-    };
   });
 </script>
 
