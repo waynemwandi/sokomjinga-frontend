@@ -4,6 +4,13 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
   import { goto } from "$app/navigation";
+  import type {
+    IChartApi,
+    ISeriesApi,
+    AreaSeriesPartialOptions,
+    Time,
+  } from "lightweight-charts";
+
   import { onMount, onDestroy } from "svelte";
 
   export let data: PageData & {
@@ -203,8 +210,8 @@
   const placeholderDeltaPct = 3; // +3%
 
   let chartEl: HTMLDivElement | null = null;
-  let chart: ReturnType<typeof createChart> | null = null;
-  let series: any = null;
+  let chart: IChartApi | null = null;
+  let series: ISeriesApi<"Area"> | null = null;
 
   const yesHistory = priceHistory?.outcomes?.find((o: any) =>
     /^(yes|true)$/i.test(o.label ?? "")
@@ -227,7 +234,6 @@
 
   onMount(async () => {
     if (!chartEl || chartData.length === 0) return;
-
     const { createChart } = await import("lightweight-charts");
 
     const chart = createChart(chartEl, {
@@ -239,16 +245,73 @@
         vertLines: { color: "rgba(148,163,184,0.1)" },
         horzLines: { color: "rgba(148,163,184,0.1)" },
       },
+      watermark: {
+        visible: true,
+        fontSize: 18,
+        horzAlign: "right",
+        vertAlign: "top",
+        color: "rgba(0,0,0,0.2)",
+        text: "MaoniMarket",
+      },
       timeScale: {
         borderVisible: false,
         timeVisible: true,
         secondsVisible: false,
+        rightBarStaysOnScroll: true,
+        fixLeftEdge: true,
+        fixRightEdge: true,
+        tickMarkFormatter: (time: Time) => {
+          if (typeof time !== "number") return "";
+
+          const d = new Date(time * 1000);
+          const now = Date.now();
+          const rangeDays = (now - d.getTime()) / (1000 * 60 * 60 * 24);
+
+          if (rangeDays < 1) {
+            // intraday
+            return d.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+          }
+
+          if (rangeDays < 60) {
+            // days
+            return d.toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+            });
+          }
+
+          // long range
+          return d.toLocaleDateString("en-GB", {
+            month: "short",
+            year: "numeric",
+          });
+        },
       },
+
       rightPriceScale: {
         borderVisible: false,
         scaleMargins: { top: 0.15, bottom: 0.15 },
       },
       crosshair: { mode: 1 },
+      handleScroll: {
+        mouseWheel: false,
+        pressedMouseMove: false,
+        horzTouchDrag: false,
+        vertTouchDrag: false,
+      },
+
+      handleScale: {
+        axisPressedMouseMove: false,
+        mouseWheel: false,
+        pinch: false,
+      },
+      kineticScroll: {
+        mouse: false,
+        touch: false,
+      },
     });
 
     const series = chart.addAreaSeries({
@@ -359,19 +422,15 @@
     <!-- left: chart + context -->
     <section class="md:col-span-2 space-y-6">
       <!-- Price chart card -->
-      <div class="rounded-xl border border-border bg-card">
-        <!-- <div class="p-4 border-b border-border/60 text-sm font-medium">
-          Price chart
-        </div> -->
+      <div
+        class="rounded-xl border border-border/50 bg-card text-sm font-medium"
+      >
         <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
-          <div
-            class="h-full rounded-lg bg-background/40 border border-border/40 p-4"
-          >
+          <div class="h-full rounded-lg bg-background/40 p-4">
             {#if chartData.length}
-              <div
-                bind:this={chartEl}
-                style="width: 100%; height: 300px;"
-              ></div>
+              <div class="relative w-full h-[300px]">
+                <div bind:this={chartEl} class="w-full h-full"></div>
+              </div>
             {:else}
               <div
                 class="h-full flex items-center justify-center text-sm text-muted-foreground"
