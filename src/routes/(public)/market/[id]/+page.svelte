@@ -37,7 +37,7 @@
     if (!priceHistory?.outcomes?.length) return [];
 
     const yes = priceHistory.outcomes.find((o: any) =>
-      /^(yes|true)$/i.test(o.label ?? "")
+      /^(yes|true)$/i.test(o.label ?? ""),
     );
     if (!yes || !yes.points?.length) return [];
 
@@ -179,7 +179,7 @@
   };
 
   const yesOutcomeStats = outcomes.find((o: any) =>
-    /^(yes|true)$/i.test(o?.label ?? o?.name ?? "")
+    /^(yes|true)$/i.test(o?.label ?? o?.name ?? ""),
   );
 
   const yesPct = yesOutcomeStats ? Math.round(priceOf(yesOutcomeStats)) : null;
@@ -198,13 +198,23 @@
     return `KES ${(v / 1_000_000_000).toFixed(1)}B`;
   };
 
-  const resolveDate = market.resolve_at
-    ? new Date(market.resolve_at).toLocaleDateString("en-GB", {
+  const projectedEndDate = market.projected_end_date
+    ? new Date(market.projected_end_date).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
         year: "numeric",
       })
     : null;
+
+  const hasVolume = typeof volumeKES === "number" && volumeKES > 0;
+
+  const volumeLabel = hasVolume
+    ? `${formatCompactKES(volumeKES)} Vol.`
+    : "– Vol.";
+
+  const projectedEndLabel = projectedEndDate
+    ? `Ends ${projectedEndDate}`
+    : "Ends –";
 
   // TEMP placeholders (until backend wires real data)
   const placeholderDeltaPct = 3; // +3%
@@ -214,7 +224,7 @@
   let series: ISeriesApi<"Area"> | null = null;
 
   const yesHistory = priceHistory?.outcomes?.find((o: any) =>
-    /^(yes|true)$/i.test(o.label ?? "")
+    /^(yes|true)$/i.test(o.label ?? ""),
   );
 
   console.log("YES history resolved:", yesHistory);
@@ -402,210 +412,216 @@
       </div>
     </div>
 
-    <!-- Volume + date -->
-    <div class="flex items-center gap-4 text-sm text-muted-foreground">
-      {#if volumeKES}
-        <span>{formatCompactKES(volumeKES)} Vol.</span>
-      {/if}
-
-      {#if resolveDate}
-        <span class="flex items-center gap-1">
-          <span>•</span>
-          <span>{resolveDate}</span>
-        </span>
-      {/if}
+    <!-- Volume + projected end -->
+    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+      <span>{volumeLabel}</span>
+      <span class="opacity-60">|</span>
+      <span>{projectedEndLabel}</span>
     </div>
-  </div>
 
-  <!-- two columns -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <!-- left: chart + context -->
-    <section class="md:col-span-2 space-y-6">
-      <!-- Price chart card -->
-      <div
-        class="rounded-xl border border-border/50 bg-card text-sm font-medium"
-      >
-        <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
-          <div class="h-full rounded-lg bg-background/40 p-4">
-            {#if chartData.length}
-              <div class="relative w-full h-[300px]">
-                <div bind:this={chartEl} class="w-full h-full"></div>
-              </div>
-            {:else}
-              <div
-                class="h-full flex items-center justify-center text-sm text-muted-foreground"
-              >
-                No price history yet.
-              </div>
-            {/if}
+    <!-- two columns -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- left: chart + context -->
+      <section class="md:col-span-2 space-y-6">
+        <!-- Price chart card -->
+        <div
+          class="rounded-xl border border-border/50 bg-card text-sm font-medium"
+        >
+          <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
+            <div class="h-full rounded-lg bg-background/40 p-4">
+              {#if chartData.length}
+                <div class="relative w-full h-[300px]">
+                  <div bind:this={chartEl} class="w-full h-full"></div>
+                </div>
+              {:else}
+                <div
+                  class="h-full flex items-center justify-center text-sm text-muted-foreground"
+                >
+                  No price history yet.
+                </div>
+              {/if}
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Market context card -->
-      <div class="rounded-xl border border-border bg-card">
-        <div class="p-4 border-b border-border/60 text-sm font-medium">
-          Market Context
-        </div>
-        <div class="p-4 text-sm text-muted-foreground">
-          {market.description ?? "No description."}
-        </div>
-      </div>
-    </section>
+        <!-- Order book card (placeholder) -->
+        <div class="rounded-xl border border-border bg-card">
+          <div
+            class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
+          >
+            <span>Order Book</span>
+          </div>
 
-    <!-- right: Buy panel -->
-    <aside class="md:col-span-1">
-      <form
-        method="POST"
-        action="?/buy"
-        class="rounded-xl border border-border bg-card overflow-hidden"
-      >
-        <div
-          class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
+          <div class="p-4 text-sm text-muted-foreground italic">
+            Order book coming soon.
+          </div>
+        </div>
+
+        <!-- Market context card -->
+        <div class="rounded-xl border border-border bg-card">
+          <div class="p-4 border-b border-border/60 text-sm font-medium">
+            Market Context
+          </div>
+          <div class="p-4 text-sm text-muted-foreground">
+            {market.description ?? "No description."}
+          </div>
+        </div>
+      </section>
+
+      <!-- right: Buy panel -->
+      <aside class="md:col-span-1">
+        <form
+          method="POST"
+          action="?/buy"
+          class="rounded-xl border border-border bg-card overflow-hidden"
         >
-          <span>Buy</span>
-          {#if selectedOutcome}
-            <span class="text-xs text-muted-foreground">
-              Price per share: <span class="text-primary"
-                >{formatKES(pricePerShare)}</span
-              >
-            </span>
-          {/if}
-        </div>
-
-        <!-- hidden fields that go to the buy action -->
-        <input type="hidden" name="side" value={selectedSide} />
-        <input type="hidden" name="shares" value={shares} />
-        <!-- pricePerShare is in KES; convert to cents for the backend -->
-        <input
-          type="hidden"
-          name="price_cents"
-          value={Math.round(pricePerShare * 100)}
-        />
-
-        <div class="p-4 space-y-5">
-          {#if outcomes.length}
-            <!-- YES / NO toggle row -->
-            <div class="grid grid-cols-2 gap-2">
-              {#if yesOutcome}
-                <button
-                  type="button"
-                  class={`btn flex flex-col items-center justify-center text-sm ${
-                    selectedOutcome === yesOutcome
-                      ? "btn-yes animate-pulse"
-                      : "bg-card border-border"
-                  }`}
-                  on:click={() => selectOutcome(yesOutcome)}
+          <div
+            class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
+          >
+            <span>Buy</span>
+            {#if selectedOutcome}
+              <span class="text-xs text-muted-foreground">
+                Price per share: <span class="text-primary"
+                  >{formatKES(pricePerShare)}</span
                 >
-                  <span>Yes</span>
-                  <span class="mt-0.5 text-[11px] opacity-80">
-                    {formatKES(priceOf(yesOutcome))}
-                  </span>
-                </button>
-              {/if}
+              </span>
+            {/if}
+          </div>
 
-              {#if noOutcome}
-                <button
-                  type="button"
-                  class={`btn flex flex-col items-center justify-center text-sm ${
-                    selectedOutcome === noOutcome
-                      ? "btn-no animate-pulse"
-                      : "bg-card border-border"
-                  }`}
-                  on:click={() => selectOutcome(noOutcome)}
-                >
-                  <span>No</span>
-                  <span class="mt-0.5 text-[11px] opacity-80">
-                    {formatKES(priceOf(noOutcome))}
-                  </span>
-                </button>
-              {/if}
-            </div>
+          <!-- hidden fields that go to the buy action -->
+          <input type="hidden" name="side" value={selectedSide} />
+          <input type="hidden" name="shares" value={shares} />
+          <!-- pricePerShare is in KES; convert to cents for the backend -->
+          <input
+            type="hidden"
+            name="price_cents"
+            value={Math.round(pricePerShare * 100)}
+          />
 
-            <!-- Shares selector -->
-            <div class="space-y-2">
-              <div
-                class="flex items-center justify-between text-xs text-primary-foreground"
-              >
-                <span>Shares</span>
-                <span>Price / share: {formatKES(pricePerShare)}</span>
+          <div class="p-4 space-y-5">
+            {#if outcomes.length}
+              <!-- YES / NO toggle row -->
+              <div class="grid grid-cols-2 gap-2">
+                {#if yesOutcome}
+                  <button
+                    type="button"
+                    class={`btn flex flex-col items-center justify-center text-sm ${
+                      selectedOutcome === yesOutcome
+                        ? "btn-yes animate-pulse"
+                        : "bg-card border-border"
+                    }`}
+                    on:click={() => selectOutcome(yesOutcome)}
+                  >
+                    <span>Yes</span>
+                    <span class="mt-0.5 text-[11px] opacity-80">
+                      {formatKES(priceOf(yesOutcome))}
+                    </span>
+                  </button>
+                {/if}
+
+                {#if noOutcome}
+                  <button
+                    type="button"
+                    class={`btn flex flex-col items-center justify-center text-sm ${
+                      selectedOutcome === noOutcome
+                        ? "btn-no animate-pulse"
+                        : "bg-card border-border"
+                    }`}
+                    on:click={() => selectOutcome(noOutcome)}
+                  >
+                    <span>No</span>
+                    <span class="mt-0.5 text-[11px] opacity-80">
+                      {formatKES(priceOf(noOutcome))}
+                    </span>
+                  </button>
+                {/if}
               </div>
 
-              <div class="flex items-center gap-3">
-                <button
-                  type="button"
-                  class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
-                  on:click={decShares}
-                  aria-label="Decrease shares"
-                >
-                  –
-                </button>
-
+              <!-- Shares selector -->
+              <div class="space-y-2">
                 <div
-                  class="flex-1 text-center rounded-md bg-input py-2 text-sm font-medium"
+                  class="flex items-center justify-between text-xs text-primary-foreground"
                 >
-                  {shares}
+                  <span>Shares</span>
+                  <span>Price / share: {formatKES(pricePerShare)}</span>
                 </div>
 
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
+                    on:click={decShares}
+                    aria-label="Decrease shares"
+                  >
+                    –
+                  </button>
+
+                  <div
+                    class="flex-1 text-center rounded-md bg-input py-2 text-sm font-medium"
+                  >
+                    {shares}
+                  </div>
+
+                  <button
+                    type="button"
+                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
+                    on:click={incShares}
+                    aria-label="Increase shares"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quick share presets -->
+              <div class="flex gap-2 pt-1">
                 <button
                   type="button"
-                  class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
-                  on:click={incShares}
-                  aria-label="Increase shares"
+                  class="rounded-md bg-input px-2 py-1 text-xs"
+                  on:click={() => (shares = shares + 1)}
                 >
-                  +
+                  +1
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md bg-input px-2 py-1 text-xs"
+                  on:click={() => (shares = shares + 5)}
+                >
+                  +5
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md bg-input px-2 py-1 text-xs"
+                  on:click={() => (shares = shares + 10)}
+                >
+                  +10
                 </button>
               </div>
-            </div>
 
-            <!-- Quick share presets -->
-            <div class="flex gap-2 pt-1">
-              <button
-                type="button"
-                class="rounded-md bg-input px-2 py-1 text-xs"
-                on:click={() => (shares = shares + 1)}
+              <!-- Total cost -->
+              <div
+                class="flex items-center justify-between pt-3 text-xs text-muted-foreground"
               >
-                +1
-              </button>
-              <button
-                type="button"
-                class="rounded-md bg-input px-2 py-1 text-xs"
-                on:click={() => (shares = shares + 5)}
-              >
-                +5
-              </button>
-              <button
-                type="button"
-                class="rounded-md bg-input px-2 py-1 text-xs"
-                on:click={() => (shares = shares + 10)}
-              >
-                +10
-              </button>
-            </div>
+                <span>Estimated cost</span>
+                <span class="text-sm font-semibold text-foreground">
+                  {formatKES(totalKES)}
+                </span>
+              </div>
 
-            <!-- Total cost -->
-            <div
-              class="flex items-center justify-between pt-3 text-xs text-muted-foreground"
-            >
-              <span>Estimated cost</span>
-              <span class="text-sm font-semibold text-foreground">
-                {formatKES(totalKES)}
-              </span>
-            </div>
-
-            <!-- Submit -->
-            <button
-              type="submit"
-              class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-              disabled={!selectedOutcome || !shares || pricePerShare <= 0}
-            >
-              Place order · {formatKES(totalKES)}
-            </button>
-          {:else}
-            <div class="text-xs text-muted-foreground">No outcomes yet.</div>
-          {/if}
-        </div>
-      </form>
-    </aside>
+              <!-- Submit -->
+              <button
+                type="submit"
+                class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                disabled={!selectedOutcome || !shares || pricePerShare <= 0}
+              >
+                Place order · {formatKES(totalKES)}
+              </button>
+            {:else}
+              <div class="text-xs text-muted-foreground">No outcomes yet.</div>
+            {/if}
+          </div>
+        </form>
+      </aside>
+    </div>
   </div>
 </main>

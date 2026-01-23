@@ -17,6 +17,8 @@
     category?: string | null;
     description?: string | null;
     status?: "open" | "closed" | "settled";
+    close_at?: string | null;
+    projected_end_date?: string | null;
     created_at?: string;
     updated_at?: string;
     outcomes?: Outcome[];
@@ -31,6 +33,8 @@
   let markets: Market[] = data.markets as Market[];
   let loading = false;
   let error: string | null = null;
+  let newProjectedEndDate = "";
+  let editProjectedEndDate = "";
 
   let q = "";
   let onlyOpen = false;
@@ -49,7 +53,7 @@
 
   async function onClose(m: Market) {
     const ok = confirm(
-      `Close market “${m.title}”? This will prevent further trading.`
+      `Close market “${m.title}”? This will prevent further trading.`,
     );
     if (!ok) return;
     try {
@@ -62,7 +66,7 @@
 
   async function onDelete(m: Market) {
     const ok = confirm(
-      `Delete market “${m.title}”? This action cannot be undone.`
+      `Delete market “${m.title}”? This action cannot be undone.`,
     );
     if (!ok) return;
     try {
@@ -85,15 +89,17 @@
           description: newDescription.trim() || null,
           image_url: newImageUrl.trim() || null,
           category: newCategory.trim() || null,
+          projected_end_date: newProjectedEndDate || null,
           status: "open",
         },
-        accessToken
+        accessToken,
       );
       showCreate = false;
       newTitle = "";
       newDescription = "";
       newImageUrl = "";
       newCategory = "";
+      newProjectedEndDate = "";
       await fetchMarkets();
     } catch (e: any) {
       alert(e?.message || "Create failed");
@@ -103,7 +109,7 @@
   $: filtered = markets
     .filter((m) => (onlyOpen ? (m.status ?? "open") === "open" : true))
     .filter((m) =>
-      q ? m.title?.toLowerCase().includes(q.toLowerCase()) : true
+      q ? m.title?.toLowerCase().includes(q.toLowerCase()) : true,
     );
 
   let editOpen = false;
@@ -119,6 +125,9 @@
     editDescription = (m.description as string) ?? "";
     editImageUrl = (m.image_url as string) ?? "";
     editCategory = (m.category as string) ?? "";
+    editProjectedEndDate = m.projected_end_date
+      ? m.projected_end_date.slice(0, 16)
+      : "";
     editOpen = true;
   }
 
@@ -132,8 +141,9 @@
           description: editDescription.trim() || null,
           image_url: editImageUrl.trim() || null,
           category: editCategory.trim() || null,
+          projected_end_date: editProjectedEndDate || null,
         },
-        accessToken
+        accessToken,
       );
       editOpen = false;
       edit = null;
@@ -277,6 +287,21 @@
               class="rounded-md border border-border bg-input px-3 py-2 text-sm"
               bind:value={newImageUrl}
               placeholder="https://…"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label
+              for="new-projected-end"
+              class="text-xs text-muted-foreground"
+            >
+              Projected end date
+            </label>
+            <input
+              id="new-projected-end"
+              type="date"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={newProjectedEndDate}
             />
           </div>
         </div>
@@ -426,6 +451,21 @@
               placeholder="https://…"
             />
           </div>
+
+          <div class="grid gap-1.5">
+            <label
+              for="edit-projected-end"
+              class="text-xs text-muted-foreground"
+            >
+              Projected end date
+            </label>
+            <input
+              id="edit-projected-end"
+              type="date"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={editProjectedEndDate}
+            />
+          </div>
         </div>
 
         <!-- Right: preview -->
@@ -503,6 +543,7 @@
           <th class="px-3 py-2 font-medium">Outcomes</th>
           <th class="px-3 py-2 font-medium">Created</th>
           <th class="px-3 py-2 font-medium">Updated</th>
+          <th class="px-3 py-2 font-medium">Projected End</th>
           <th class="px-3 py-2 font-medium text-right">Actions</th>
         </tr>
       </thead>
@@ -574,6 +615,16 @@
                   ? new Date(m.updated_at as string).toLocaleString()
                   : "—"}
               </time>
+            </td>
+
+            <td class="px-3 py-2 align-top">
+              {#if m.projected_end_date}
+                <time class="text-xs text-muted-foreground">
+                  {new Date(m.projected_end_date).toLocaleDateString()}
+                </time>
+              {:else}
+                <span class="text-xs text-muted-foreground">—</span>
+              {/if}
             </td>
 
             <td class="px-3 py-2 align-top">
