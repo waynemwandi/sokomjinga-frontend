@@ -17,14 +17,27 @@ type Stats = {
   logins_by_provider: Record<string, number>;
 };
 
+type AuthPoint = {
+  date: string;
+  logins: number;
+};
+
+type AuthSeries = {
+  days: number;
+  points: AuthPoint[];
+};
+
 export const load: PageServerLoad = async ({ fetch }) => {
-  const res = await fetch(`${BASE}/admin/stats`);
+  const statsRes = await fetch(`${BASE}/admin/stats`);
+  const seriesRes = await fetch(`${BASE}/admin/auth/timeseries?days=30`);
 
-  if (!res.ok) {
-    // fallback so the page still renders if the API is down
-    return { stats: null };
-  }
-
-  const stats = (await res.json()) as Stats;
-  return { stats };
+  return {
+    stats: statsRes.ok ? ((await statsRes.json()) as Stats) : null,
+    authSeries: seriesRes.ok
+      ? ((await seriesRes.json()) as {
+          days: number;
+          points: { date: string; logins: number }[];
+        })
+      : null,
+  };
 };

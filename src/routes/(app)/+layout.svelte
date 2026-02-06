@@ -125,7 +125,7 @@
           >
             <ChartNoAxesCombined class="size-4" />
           </div>
-          <span class="text-sm font-semibold">SokoMjinga</span>
+          <span class="text-sm font-semibold">MaoniMarket</span>
         </a>
 
         <nav class="px-2 space-y-1 text-sm">
@@ -265,7 +265,7 @@
               >
                 <ChartNoAxesCombined class="size-4" />
               </div>
-              <span class="text-sm font-semibold">SokoMjinga</span>
+              <span class="text-sm font-semibold">MaoniMarket</span>
             </div>
             <button
               class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition-colors"
