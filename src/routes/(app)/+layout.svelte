@@ -142,10 +142,6 @@
             class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
           >
           <a
-            href="/admin/reports"
-            class={navClass("/admin/reports", page.url.pathname)}>Reports</a
-          >
-          <a
             href="/admin/api-status"
             class={navClass("/admin/api-status", page.url.pathname)}
             >API Status</a
@@ -289,10 +285,6 @@
             <a
               href="/admin/wallets"
               class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
-            >
-            <a
-              href="/admin/reports"
-              class={navClass("/admin/reports", page.url.pathname)}>Reports</a
             >
             <a
               href="/admin/api-status"
