@@ -27,9 +27,9 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   };
 
   // Fetch wallet + bets + positions
-  const [walletRes, betsRes, positionsRes] = await Promise.all([
+  const [walletRes, statementRes, positionsRes] = await Promise.all([
     fetch(`${BASE}/wallet/me`, { headers }),
-    fetch(`${BASE}/me/bets`, { headers }),
+    fetch(`${BASE}/wallet/statement?limit=50`, { headers }),
     fetch(`${BASE}/me/positions`, { headers }),
   ]);
 
@@ -41,12 +41,15 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   if (!walletRes.ok) {
     throw error(
       500,
-      `Failed to load wallet: ${walletRes.status} ${walletRes.statusText}`
+      `Failed to load wallet: ${walletRes.status} ${walletRes.statusText}`,
     );
   }
 
   const wallet = await walletRes.json();
-  const bets = betsRes.ok ? await betsRes.json().catch(() => []) : [];
+  const statement = statementRes.ok
+    ? await statementRes.json().catch(() => ({ items: [], total: 0 }))
+    : { items: [], total: 0 };
+
   const positions = positionsRes.ok
     ? await positionsRes.json().catch(() => null)
     : null;
@@ -56,7 +59,7 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
 
   return {
     wallet,
-    bets,
+    statement,
     positions,
     openDeposit,
   };
@@ -88,13 +91,23 @@ export const actions: Actions = {
 
     try {
       // Dev-only auto-confirm deposit (via Wallet.deposit helper)
-      await Wallet.deposit(
+      // await Wallet.deposit(
+      //   { amount_cents },
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   },
+      // );
+
+      // Production flow: create pending STK push, user confirms on phone, then wallet is updated via webhook. No need to auto-confirm here.
+      const created = await Wallet.depositSTK(
         { amount_cents },
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       // Let SvelteKit reload the page and show updated balance/history

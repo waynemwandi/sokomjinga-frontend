@@ -8,18 +8,12 @@
 
   const wallet = data.wallet;
   const positions = data.positions;
-  const bets = data.bets ?? [];
+  const statement = data.statement?.items ?? [];
 
   // ---- Derived numbers ------------------------------------------------
   const availableBalanceKes = (wallet?.balance_cents ?? 0) / 100;
   const inActiveBetsKes = (positions?.totals?.stake_cents ?? 0) / 100;
   const activeBetsCount = positions?.positions?.length ?? 0;
-
-  const wins = bets.filter((b: any) => b.result === "correct").length;
-  const losses = bets.filter((b: any) => b.result === "incorrect").length;
-  const totalStakeKes =
-    bets.reduce((sum: number, b: any) => sum + (b.stake_cents ?? 0), 0) / 100;
-  const winRate = bets.length > 0 ? Math.round((wins / bets.length) * 100) : 0;
 
   let depositOpen = Boolean(data.openDeposit);
   let depositError: string | null = null;
@@ -126,39 +120,17 @@
         </div>
       </div>
     </div>
-
-    <!-- Quick stats -->
-    <div class="space-y-3">
-      <div class="rounded-xl border border-border bg-card p-4">
-        <p class="text-xs font-medium text-muted-foreground mb-1">
-          Active bets
-        </p>
-        <p class="text-2xl font-semibold">{activeBetsCount}</p>
-      </div>
-      <div class="rounded-xl border border-border bg-card p-4">
-        <p class="text-xs font-medium text-muted-foreground mb-1">Win rate</p>
-        <p
-          class="text-2xl font-semibold {wins > losses
-            ? 'text-emerald-500'
-            : wins === 0
-              ? ''
-              : 'text-amber-500'}"
-        >
-          {winRate}%
-        </p>
-      </div>
-    </div>
   </section>
 
   <!-- Transaction / prediction history -->
   <section class="space-y-3">
     <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold">Prediction history</h2>
+      <h2 class="text-sm font-semibold">Wallet statement</h2>
     </div>
 
-    {#if !bets || bets.length === 0}
+    {#if !statement || statement.length === 0}
       <p class="text-sm text-muted-foreground">
-        You have no predictions yet. Once you place bets, they will appear here.
+        No transactions yet. Deposits and settlements will appear here.
       </p>
     {:else}
       <div class="overflow-x-auto rounded-lg border border-border">
@@ -166,101 +138,50 @@
           <thead class="bg-card/60">
             <tr class="text-left">
               <th class="px-3 py-2 font-medium">Date</th>
-              <th class="px-3 py-2 font-medium">Market</th>
-              <th class="px-3 py-2 font-medium">Side</th>
-              <th class="px-3 py-2 font-medium">Result</th>
-              <th class="px-3 py-2 font-medium text-right">Stake (KES)</th>
+              <th class="px-3 py-2 font-medium">Type</th>
+              <th class="px-3 py-2 font-medium">Reference</th>
+              <th class="px-3 py-2 font-medium text-right">Amount</th>
             </tr>
           </thead>
           <tbody>
-            {#each bets as bet (bet.id)}
+            {#each statement as item (item.id)}
               <tr class="border-t border-border hover:bg-muted/40">
-                <td class="px-3 py-2 align-top">
+                <td class="px-3 py-2">
                   <span class="text-xs text-muted-foreground">
-                    {formatDate(bet.created_at)}
+                    {formatDate(item.created_at)}
                   </span>
                 </td>
-                <td class="px-3 py-2 align-top">
-                  <div class="text-sm font-medium">
-                    {bet.title}
-                  </div>
-                  {#if bet.category}
-                    <div class="mt-0.5 text-[11px] text-muted-foreground">
-                      {bet.category}
-                    </div>
-                  {/if}
-                </td>
-                <td class="px-3 py-2 align-top">
-                  <span
-                    class="text-xs font-semibold {bet.prediction === 'yes'
-                      ? 'text-emerald-500'
-                      : bet.prediction === 'no'
-                        ? 'text-red-500'
-                        : 'text-muted-foreground'}"
-                  >
-                    {bet.prediction}
+
+                <td class="px-3 py-2">
+                  <span class="text-sm font-medium">
+                    {item.kind}
                   </span>
                 </td>
-                <td class="px-3 py-2 align-top">
-                  {#if bet.result === "correct"}
-                    <span
-                      class="inline-flex items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-500"
-                    >
-                      Won
-                    </span>
-                  {:else if bet.result === "incorrect"}
-                    <span
-                      class="inline-flex items-center rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-500"
-                    >
-                      Lost
-                    </span>
-                  {:else if bet.result === "cancelled"}
-                    <span
-                      class="inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                    >
-                      Cancelled
+
+                <td class="px-3 py-2">
+                  {#if item.mpesa_reference}
+                    <span class="text-xs text-muted-foreground">
+                      MPESA: {item.mpesa_reference}
                     </span>
                   {:else}
-                    <span
-                      class="inline-flex items-center rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-500"
-                    >
-                      Pending
-                    </span>
+                    <span class="text-xs text-muted-foreground"> — </span>
                   {/if}
                 </td>
-                <td class="px-3 py-2 align-top text-right">
-                  <span class="text-sm font-semibold">
-                    {formatShortKES((bet.stake_cents ?? 0) / 100)}
+
+                <td class="px-3 py-2 text-right">
+                  <span
+                    class="font-semibold {item.direction === 'in'
+                      ? 'text-emerald-500'
+                      : 'text-red-500'}"
+                  >
+                    {item.direction === "in" ? "+" : "-"}
+                    {formatShortKES(Math.abs(item.signed_amount_cents / 100))}
                   </span>
                 </td>
               </tr>
             {/each}
           </tbody>
         </table>
-      </div>
-
-      <!-- Footer stats -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-        <div class="rounded-lg border border-border bg-card p-3">
-          <p class="text-xs font-medium text-muted-foreground mb-1">
-            Total wagered
-          </p>
-          <p class="font-semibold">
-            {formatShortKES(totalStakeKes)}
-          </p>
-        </div>
-        <div class="rounded-lg border border-border bg-card p-3">
-          <p class="text-xs font-medium text-muted-foreground mb-1">Wins</p>
-          <p class="font-semibold text-emerald-500">
-            {wins}
-          </p>
-        </div>
-        <div class="rounded-lg border border-border bg-card p-3">
-          <p class="text-xs font-medium text-muted-foreground mb-1">Losses</p>
-          <p class="font-semibold text-red-500">
-            {losses}
-          </p>
-        </div>
       </div>
     {/if}
   </section>

@@ -26,7 +26,7 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
-      `${res.status} ${res.statusText}${body ? `: ${body}` : ""}`
+      `${res.status} ${res.statusText}${body ? `: ${body}` : ""}`,
     );
   }
 
@@ -124,7 +124,7 @@ export const Outcomes = {
     marketId: string,
     outcomeId: string,
     payload: any,
-    init?: RequestInit
+    init?: RequestInit,
   ) =>
     j<any>(`/markets/${marketId}/outcomes/${outcomeId}`, {
       method: "PUT",
@@ -200,6 +200,27 @@ export const Wallet = {
     });
 
     return confirmed;
+  },
+
+  // Production STK deposit:
+  // Only creates deposit and lets backend trigger Daraja STK
+  depositSTK: async (payload: { amount_cents: number }, init?: RequestInit) => {
+    const created = await j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>("/wallet/deposits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    });
+
+    return created; // status should be "pending"
   },
 };
 
