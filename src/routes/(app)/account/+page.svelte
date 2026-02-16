@@ -12,6 +12,7 @@
     Heart,
     Timer,
   } from "lucide-svelte";
+
   // Shape for /me/stats response (current backend)
   type StatsResponse = {
     total_predictions?: number;
@@ -44,6 +45,10 @@
     stats?: StatsResponse | null;
     bets?: Bet[];
     positions?: any[];
+    profile?: {
+      phone_e164?: string | null;
+      phone_verified?: boolean;
+    };
   };
 
   // debug
@@ -52,21 +57,28 @@
   // console.log("STATS", data.stats);
 
   const u = data.user ?? {};
-  const profile = u.profile ?? u.user_profile ?? {};
+  const userProfile = u.profile ?? u.user_profile ?? {};
+  const serverProfile = data.profile ?? null;
 
-  const displayName =
-    u.name ?? profile.full_name ?? profile.name ?? "John Mwangi";
+  let phone: string | null = serverProfile?.phone_e164 ?? null;
+  let phoneVerified = serverProfile?.phone_verified ?? false;
 
-  const email = u.email ?? profile.email ?? "";
-  const phone = profile.phone ?? u.phone ?? "";
+  const displayName = u.name ?? userProfile.full_name ?? userProfile.name;
+
+  const email = u.email ?? userProfile.email ?? "";
+
+  let editingPhone = false;
+  let phoneInput = "";
+  let phoneError: string | null = null;
+  let savingPhone = false;
 
   const handle =
-    profile.handle ??
-    profile.username ??
+    userProfile.handle ??
+    userProfile.username ??
     (email ? `@${email.split("@")[0]}` : "@johnmwangi");
 
   const bio =
-    profile.bio ??
+    userProfile.bio ??
     "Avid predictor and market enthusiast. I believe in the power of informed predictions and community intelligence.";
 
   const memberSince = u.created_at
@@ -290,15 +302,62 @@
           >
             <Phone class="h-4 w-4" />
           </div>
-          <div class="min-w-0">
+
+          <div class="min-w-0 flex-1">
             <p
               class="text-[11px] uppercase tracking-wide text-muted-foreground"
             >
               Phone
             </p>
-            <p class="truncate text-foreground">
-              {phone || "Not set"}
-            </p>
+
+            {#if editingPhone}
+              <form method="POST">
+                <div class="mt-1 space-y-2">
+                  <input
+                    type="text"
+                    name="phone"
+                    bind:value={phoneInput}
+                    placeholder="+2547XXXXXXXX"
+                    class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
+                    required
+                  />
+
+                  <div class="flex gap-2">
+                    <button
+                      type="submit"
+                      class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
+                    >
+                      Save
+                    </button>
+
+                    <button
+                      type="button"
+                      on:click={() => (editingPhone = false)}
+                      class="rounded-md border border-border px-3 py-1.5 text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </form>
+            {:else}
+              <div class="flex items-center justify-between">
+                <p class="truncate text-foreground">
+                  {phone ?? "Not set"}
+                </p>
+
+                <button
+                  type="button"
+                  on:click={() => {
+                    phoneInput = phone ?? "";
+                    editingPhone = true;
+                  }}
+                  class="text-xs text-primary hover:underline"
+                >
+                  {phone ? "Edit" : "Add"}
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
       </div>

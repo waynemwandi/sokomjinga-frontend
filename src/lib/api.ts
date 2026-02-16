@@ -36,7 +36,7 @@ export const API_BASE = BASE;
 export const getJSON = j;
 
 /* ===============================
-   WALLET (client)
+WALLET (client)
 ================================= */
 
 export const Wallet = {
@@ -84,7 +84,7 @@ export const Wallet = {
 };
 
 /* ===============================
-   MARKETS
+MARKETS
 ================================= */
 
 export const Markets = {
@@ -128,7 +128,7 @@ export const Markets = {
 };
 
 /* ===============================
-   OUTCOMES (restore this)
+OUTCOMES
 ================================= */
 
 export const Outcomes = {
@@ -161,5 +161,28 @@ export const Outcomes = {
       headers: accessToken
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
+    }),
+};
+
+/* ===============================
+PROFILE (client)
+================================= */
+
+export const Profile = {
+  me: () =>
+    j<{
+      user_id: string;
+      phone_e164: string | null;
+      phone_verified: boolean;
+    }>("/profile/me"),
+
+  setPhone: (phone_e164: string) =>
+    j<{
+      user_id: string;
+      phone_e164: string | null;
+      phone_verified: boolean;
+    }>("/profile/phone", {
+      method: "PUT",
+      body: JSON.stringify({ phone_e164 }),
     }),
 };
