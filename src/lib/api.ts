@@ -1,11 +1,9 @@
 // src/lib/api.ts
 import { env as publicEnv } from "$env/dynamic/public";
 
-// Prefer PUBLIC_API_BASE if set, else "/api"
 const BASE = (publicEnv.PUBLIC_API_BASE || "/api").replace(/\/+$/, "");
 
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
-  // merge headers first, then spread init, so we never lose content-type
   const headers = {
     "content-type": "application/json",
     ...(init?.headers || {}),
@@ -19,12 +17,12 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(
-      `${res.status} ${res.statusText}${text ? `: ${text}` : ""}`
+      `${res.status} ${res.statusText}${text ? `: ${text}` : ""}`,
     );
   }
 
-  // Handle 204 or non-JSON bodies safely
   if (res.status === 204) return undefined as T;
+
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) return undefined as T;
 
@@ -37,20 +35,68 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
 export const API_BASE = BASE;
 export const getJSON = j;
 
-/** Markets */
+/* ===============================
+   WALLET (client)
+================================= */
+
+export const Wallet = {
+  me: () => j<{ balance_cents: number; currency: string }>("/wallet/me"),
+
+  get: () => j<{ balance_cents: number; currency: string }>("/wallet/me"),
+
+  deposit: async (payload: { amount_cents: number }) => {
+    const created = await j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>("/wallet/deposits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const confirmed = await j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>(`/wallet/deposits/${created.id}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({
+        mpesa_reference: `DEV-${Date.now()}`,
+        mpesa_phone: null,
+      }),
+    });
+
+    return confirmed;
+  },
+
+  depositSTK: async (payload: { amount_cents: number }) =>
+    j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+    }>("/wallet/deposits", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+};
+
+/* ===============================
+   MARKETS
+================================= */
+
 export const Markets = {
   list: () => j<any[]>("/markets"),
   get: (id: string) => j<any>(`/markets/${id}`),
 
-  // CHANGE THIS
   create: (payload: any, accessToken?: string) =>
     j<any>("/markets", {
       method: "POST",
       body: typeof payload === "string" ? payload : JSON.stringify(payload),
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 
@@ -59,9 +105,7 @@ export const Markets = {
       method: "PUT",
       body: typeof payload === "string" ? payload : JSON.stringify(payload),
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 
@@ -69,9 +113,7 @@ export const Markets = {
     j<void>(`/markets/${id}`, {
       method: "DELETE",
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 
@@ -80,23 +122,22 @@ export const Markets = {
       method: "PUT",
       body: JSON.stringify({ status: "closed" }),
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 };
 
-/** Outcomes */
+/* ===============================
+   OUTCOMES (restore this)
+================================= */
+
 export const Outcomes = {
   create: (marketId: string, payload: any, accessToken?: string) =>
     j<any>(`/markets/${marketId}/outcomes`, {
       method: "POST",
       body: typeof payload === "string" ? payload : JSON.stringify(payload),
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 
@@ -104,15 +145,13 @@ export const Outcomes = {
     marketId: string,
     outcomeId: string,
     payload: any,
-    accessToken?: string
+    accessToken?: string,
   ) =>
     j<any>(`/markets/${marketId}/outcomes/${outcomeId}`, {
       method: "PUT",
       body: typeof payload === "string" ? payload : JSON.stringify(payload),
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 
@@ -120,9 +159,7 @@ export const Outcomes = {
     j<void>(`/markets/${marketId}/outcomes/${outcomeId}`, {
       method: "DELETE",
       headers: accessToken
-        ? {
-            Authorization: `Bearer ${accessToken}`,
-          }
+        ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
 };

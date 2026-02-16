@@ -3,17 +3,18 @@
   import type { PageData } from "./$types";
   import DepositModal from "$lib/components/wallet/DepositModal.svelte";
   import { page } from "$app/stores";
+  import { Wallet, getJSON } from "$lib/api";
 
   export let data: PageData;
 
-  const wallet = data.wallet;
-  const positions = data.positions;
-  const statement = data.statement?.items ?? [];
+  let wallet = data.wallet;
+  let positions = data.positions;
+  let statement = data.statement?.items ?? [];
 
   // ---- Derived numbers ------------------------------------------------
-  const availableBalanceKes = (wallet?.balance_cents ?? 0) / 100;
-  const inActiveBetsKes = (positions?.totals?.stake_cents ?? 0) / 100;
-  const activeBetsCount = positions?.positions?.length ?? 0;
+  $: availableBalanceKes = (wallet?.balance_cents ?? 0) / 100;
+  $: inActiveBetsKes = (positions?.totals?.stake_cents ?? 0) / 100;
+  $: activeBetsCount = positions?.positions?.length ?? 0;
 
   let depositOpen = Boolean(data.openDeposit);
   let depositError: string | null = null;
@@ -47,6 +48,17 @@
       month: "short",
       day: "2-digit",
     });
+
+  async function refreshWallet() {
+    const updated = await Wallet.me();
+    wallet = updated;
+
+    const updatedStatement = await getJSON<{
+      items: any[];
+    }>("/wallet/statement?limit=50");
+
+    statement = updatedStatement.items ?? [];
+  }
 </script>
 
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6 space-y-6">
@@ -189,8 +201,7 @@
   <!-- Deposit modal -->
   <DepositModal
     open={depositOpen}
-    error={depositError}
-    amount={depositAmount}
     on:close={() => (depositOpen = false)}
+    on:success={refreshWallet}
   />
 </main>
