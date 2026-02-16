@@ -127,10 +127,31 @@
       : data.markets.filter(
           (m: any) =>
             m.category &&
-            normalizeCategory(m.category) === normalizeCategory(activeCategory)
+            normalizeCategory(m.category) === normalizeCategory(activeCategory),
         )
   ).filter((m: any) => (m.status ?? "open").toLowerCase() !== "closed");
 </script>
+
+<svelte:head>
+  <title>MaoniMarket | Kenya’s Real-Money Sentiment Market</title>
+
+  <meta
+    name="description"
+    content="MaoniMarket is Kenya’s real-money sentiment market. Express views on politics, sports, finance and major events using structured Yes/No markets powered by M-Pesa."
+  />
+
+  <meta
+    property="og:title"
+    content="MaoniMarket – Kenya’s Real-Money Sentiment Market"
+  />
+  <meta
+    property="og:description"
+    content="Express views on politics, sports and major events using structured markets powered by M-Pesa."
+  />
+  <meta property="og:image" content="https://maonimarket.com/og-banner.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://maonimarket.com" />
+</svelte:head>
 
 <!-- ===========================
     Header
@@ -152,7 +173,7 @@
         }`}
         on:click={() =>
           goto(
-            c === "All markets" ? "/" : `/?category=${encodeURIComponent(c)}`
+            c === "All markets" ? "/" : `/?category=${encodeURIComponent(c)}`,
           )}
       >
         {c}
@@ -165,6 +186,18 @@
     Grid CONTENT
   =========================== -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
+  <!-- SEO Hero Section -->
+  <!-- <section class="mb-8 max-w-3xl">
+    <h1 class="text-3xl md:text-4xl font-semibold leading-tight mb-3">
+      Kenya’s Real-Money Sentiment Market
+    </h1>
+
+    <p class="text-muted-foreground text-base leading-relaxed">
+      MaoniMarket allows participants to express views on politics, sports,
+      finance and major events using structured Yes/No markets powered by
+      M-Pesa.
+    </p>
+  </section> -->
   {#if activeCategory !== "All markets" && filteredMarkets.length === 0}
     <div class="mt-10 rounded-xl border border-border/60 bg-card/40 px-6 py-16">
       <div class="flex flex-col items-center justify-center text-center">

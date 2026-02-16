@@ -335,6 +335,16 @@
   });
 </script>
 
+<svelte:head>
+  <title>{market.title} | MaoniMarket</title>
+  <meta
+    name="description"
+    content={`Express a view on: ${market.title}. Participate in a structured Yes/No market powered by M-Pesa.`}
+  />
+  <meta property="og:title" content={market.title} />
+  <meta property="og:description" content={market.description ?? ""} />
+</svelte:head>
+
 <!-- ===========================
     Header (shared with homepage)
   =========================== -->
