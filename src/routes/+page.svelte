@@ -151,6 +151,7 @@
   <meta property="og:image" content="https://maonimarket.com/og-banner.png" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://maonimarket.com" />
+  <meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <!-- ===========================

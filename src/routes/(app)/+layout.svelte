@@ -255,14 +255,19 @@
           class="w-[72%] max-w-[320px] h-full border-r border-border bg-card"
         >
           <div class="p-4 flex items-center justify-between">
-            <div class="flex items-center gap-2">
+            <a
+              href="/"
+              class="flex items-center gap-2 hover:bg-accent rounded-md"
+              on:click={() => (sidebarOpen = false)}
+            >
               <div
                 class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
               >
                 <ChartNoAxesCombined class="size-4" />
               </div>
               <span class="text-sm font-semibold">MaoniMarket</span>
-            </div>
+            </a>
+
             <button
               class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card transition-colors"
               on:click={() => (sidebarOpen = false)}
@@ -276,21 +281,34 @@
             <a
               href="/admin/dashboard"
               class={navClass("/admin/dashboard", page.url.pathname)}
-              >Dashboard</a
+              on:click={() => (sidebarOpen = false)}
             >
+              Dashboard
+            </a>
+
             <a
               href="/admin/markets"
-              class={navClass("/admin/markets", page.url.pathname)}>Markets</a
+              class={navClass("/admin/markets", page.url.pathname)}
+              on:click={() => (sidebarOpen = false)}
             >
+              Markets
+            </a>
+
             <a
               href="/admin/wallets"
-              class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
+              class={navClass("/admin/wallets", page.url.pathname)}
+              on:click={() => (sidebarOpen = false)}
             >
+              Wallets
+            </a>
+
             <a
               href="/admin/api-status"
               class={navClass("/admin/api-status", page.url.pathname)}
-              >API Status</a
+              on:click={() => (sidebarOpen = false)}
             >
+              API Status
+            </a>
           </nav>
         </div>
 

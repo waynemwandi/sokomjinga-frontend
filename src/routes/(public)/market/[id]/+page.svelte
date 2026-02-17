@@ -343,6 +343,7 @@
   />
   <meta property="og:title" content={market.title} />
   <meta property="og:description" content={market.description ?? ""} />
+  <meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <!-- ===========================
