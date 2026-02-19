@@ -36,7 +36,7 @@
   <link rel="canonical" href="https://maonimarket.com" />
 </svelte:head>
 
-<div class="pb-20 md:pb-0">
+<div class="pb-28 md:pb-0">
   {@render children?.()}
 </div>
 

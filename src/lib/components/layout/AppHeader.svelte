@@ -11,6 +11,8 @@
     Menu,
     UserRound,
     Info,
+    X,
+    ChevronDown,
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
 
@@ -33,6 +35,8 @@
 
   let showHowItWorks = false;
   let step = 1;
+
+  let hideHowItWorksBar = false;
 </script>
 
 <header
@@ -166,7 +170,9 @@
             step = 1;
           }}
         >
-          <Info class="h-4 w-4 text-blue-500" />
+          <Info
+            class="h-4 w-4 text-muted-foreground hover:text-accent-foreground"
+          />
           How it works
         </button>
 
@@ -199,10 +205,51 @@
   </div>
 </header>
 
+{#if !isAuthed && !hideHowItWorksBar}
+  <div
+    class="fixed bottom-16 left-0 right-0 z-40 sm:hidden
+           border-t border-border bg-background/95 backdrop-blur"
+  >
+    <div class="relative h-12 flex items-center justify-center px-4 text-sm">
+      <button
+        class="flex items-center gap-2 text-primary font-medium"
+        on:click={() => {
+          showHowItWorks = true;
+          step = 1;
+        }}
+      >
+        <Info class="h-4 w-4" />
+        How it works
+      </button>
+
+      <button
+        class="absolute right-4 inline-flex h-8 w-8 items-center justify-center
+         rounded-md border border-border bg-card hover:bg-accent transition"
+        on:click={() => (hideHowItWorksBar = true)}
+        aria-label="Close"
+      >
+        <X class="h-4 w-4" />
+      </button>
+    </div>
+  </div>
+{/if}
+
 {#if showHowItWorks}
-  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+  <div
+    class="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center sm:justify-center"
+  >
     <div
-      class="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+      class="
+        w-full
+        sm:max-w-md
+        overflow-hidden
+        bg-card
+        border border-border
+        shadow-xl
+        rounded-t-2xl sm:rounded-xl
+        max-h-[90vh]
+        overflow-y-auto
+      "
     >
       <!-- IMAGE -->
       <div class="relative h-48 w-full bg-muted">
@@ -235,10 +282,12 @@
           </h2>
 
           <button
-            class="text-muted-foreground hover:text-foreground"
+            class="inline-flex h-8 w-8 items-center justify-center
+         rounded-md hover:bg-accent transition"
             on:click={() => (showHowItWorks = false)}
+            aria-label="Dismiss"
           >
-            ✕
+            <ChevronDown class="h-5 w-5" />
           </button>
         </div>
 
