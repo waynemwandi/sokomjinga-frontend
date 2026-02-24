@@ -1,19 +1,9 @@
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
-  // import { toggleTheme } from "$lib/theme";
   import { page } from "$app/stores";
 
-  import {
-    ChartNoAxesCombined,
-    Sun,
-    Moon,
-    Bookmark,
-    Gift,
-    LogIn,
-    LogOut,
-    UserRound,
-  } from "lucide-svelte";
+  import { Bookmark, Gift } from "lucide-svelte";
   import { goto } from "$app/navigation";
 
   // Server data
@@ -27,7 +17,6 @@
     (v ?? "").trim().toLowerCase();
   let isAuthed = data.isAuthed;
   let portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
-  let openMenu = false;
 
   const categories = [
     "All markets",
@@ -64,14 +53,13 @@
 
   const gaugeColor = (m: any) => {
     const pct = chanceOf(m) ?? FALLBACK_CHANCE;
-    // Use your existing CSS vars for yes/no colors
     return pct < 50 ? "var(--color-no)" : "var(--color-yes)";
   };
 
-  const goLogin = () => goto("/login");
-
   const volLabel = (m: any) =>
-    m.volume_cents ? `${formatVolumeKES(m.volume_cents)} Vol.` : "— Vol.";
+    typeof m.volume_cents === "number"
+      ? `${formatVolumeKES(m.volume_cents)} Vol.`
+      : "— Vol.";
 
   const formatVolumeKES = (cents: number) => {
     const kes = cents / 100;
@@ -127,14 +115,21 @@
   $: activeCategory =
     $page.url.searchParams.get("category")?.trim() || "All markets";
 
-  $: filteredMarkets =
+  $: filteredMarkets = (
     activeCategory === "All markets"
-      ? data.markets
+      ? [...data.markets]
       : data.markets.filter(
           (m: any) =>
             m.category &&
             normalizeCategory(m.category) === normalizeCategory(activeCategory),
-        );
+        )
+  ).sort((a: any, b: any) => {
+    const av = a.volume_cents ?? 0;
+    const bv = b.volume_cents ?? 0;
+    return (
+      (b.status === "open" ? 1 : 0) - (a.status === "open" ? 1 : 0) || bv - av
+    );
+  });
 </script>
 
 <svelte:head>
