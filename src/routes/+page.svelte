@@ -126,8 +126,12 @@
   ).sort((a: any, b: any) => {
     const av = a.volume_cents ?? 0;
     const bv = b.volume_cents ?? 0;
+    const statusRank = (s: string) =>
+      s === "open" ? 0 : s === "closed" ? 1 : s === "settled" ? 2 : 3;
+
     return (
-      (b.status === "open" ? 1 : 0) - (a.status === "open" ? 1 : 0) || bv - av
+      statusRank(a.status) - statusRank(b.status) ||
+      (b.volume_cents ?? 0) - (a.volume_cents ?? 0)
     );
   });
 </script>
@@ -337,7 +341,9 @@
             <div
               class="px-4 lg:px-5 pb-4 pt-3 flex items-center text-xs text-muted-foreground"
             >
-              <span class="flex-1">{volLabel(m)}</span>
+              <span class="flex-1 font-medium text-foreground/80">
+                {volLabel(m)}
+              </span>
               <div class="flex items-center gap-2 opacity-70">
                 <Gift class="h-4 w-4" />
                 <Bookmark class="h-4 w-4" />
