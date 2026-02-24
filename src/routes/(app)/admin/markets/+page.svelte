@@ -1,7 +1,7 @@
 <!-- src/routes/(app)/admin/markets/+page.svelte -->
 <script lang="ts">
   import { Markets } from "$lib/api"; // client helper
-
+  import { CircleAlert } from "lucide-svelte";
   export let data: {
     accessToken?: string | null;
     markets: any[];
@@ -9,7 +9,7 @@
 
   const accessToken = (data.accessToken ?? undefined) as string | undefined;
 
-  type Outcome = { id: string; label: string; probability?: number };
+  type Outcome = { id: string; label: string; price_cents?: number };
   type Market = {
     id: string;
     title: string;
@@ -35,6 +35,11 @@
   let error: string | null = null;
   let newProjectedEndDate = "";
   let editProjectedEndDate = "";
+
+  // Settlement modal state
+  let settleOpen = false;
+  let settleMarket: Market | null = null;
+  let selectedOutcomeId: string | null = null;
 
   let q = "";
   let onlyOpen = false;
@@ -150,6 +155,35 @@
       await fetchMarkets();
     } catch (e: any) {
       alert(e?.message || "Update failed");
+    }
+  }
+
+  function onSettle(m: Market) {
+    settleMarket = m;
+    const yes = m.outcomes?.find((o) => o.label?.toLowerCase() === "yes");
+    selectedOutcomeId = yes?.id ?? m.outcomes?.[0]?.id ?? null;
+    settleOpen = true;
+  }
+
+  async function confirmSettlement() {
+    if (!settleMarket || !selectedOutcomeId) {
+      alert("Please select a winning outcome.");
+      return;
+    }
+
+    const ok = confirm(
+      `Are you sure you want to settle “${settleMarket.title}”? This action cannot be undone.`,
+    );
+    if (!ok) return;
+
+    try {
+      await Markets.settle(settleMarket.id, selectedOutcomeId, accessToken);
+      settleOpen = false;
+      settleMarket = null;
+      selectedOutcomeId = null;
+      await fetchMarkets();
+    } catch (e: any) {
+      alert(e?.message || "Settlement failed");
     }
   }
 </script>
@@ -524,6 +558,92 @@
   </div>
 {/if}
 
+{#if settleOpen && settleMarket}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="presentation"
+    on:keydown={(e) => e.key === "Escape" && (settleOpen = false)}
+    tabindex="-1"
+  >
+    <button
+      type="button"
+      class="absolute inset-0 bg-foreground/50"
+      aria-label="Close dialog"
+      on:click={() => (settleOpen = false)}
+    ></button>
+
+    <div
+      class="relative w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settle Market"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+      tabindex="-1"
+    >
+      <h2 class="text-base font-semibold mb-3">Settle Market</h2>
+
+      <div class="mb-4 text-sm text-muted-foreground">
+        Select the winning outcome for:
+        <div class="font-medium text-foreground mt-1">
+          {settleMarket.title}
+        </div>
+      </div>
+
+      <!-- Dropdown -->
+      <div class="mb-4">
+        <label
+          for="settle-outcome"
+          class="text-xs text-muted-foreground mb-1 block"
+        >
+          Winning outcome
+        </label>
+
+        <select
+          id="settle-outcome"
+          bind:value={selectedOutcomeId}
+          class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
+        >
+          {#each settleMarket.outcomes ?? [] as o}
+            <option value={o.id}>
+              {o.label}
+              {o.price_cents != null ? ` · ${o.price_cents}%` : ""}
+            </option>
+          {/each}
+        </select>
+      </div>
+
+      <!-- Warning -->
+      <div class="flex items-start gap-2 text-amber-400 text-sm">
+        <CircleAlert class="w-4 h-4 mt-0.5" />
+        <span
+          >Settlement is irreversible. All payouts will be executed immediately.</span
+        >
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex justify-end gap-2">
+        <button
+          type="button"
+          class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card"
+          on:click={() => (settleOpen = false)}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-500/20"
+          on:click={confirmSettlement}
+          disabled={!selectedOutcomeId}
+        >
+          Confirm Settlement
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <!-- ===========================
   Body States / Market Table
 =========================== -->
@@ -590,9 +710,8 @@
                     <span
                       class="inline-flex items-center rounded bg-input px-2 py-0.5 text-xs"
                     >
-                      {o.label}{o.probability != null
-                        ? ` · ${Math.round(o.probability * 100)}%`
-                        : ""}
+                      {o.label}
+                      {o.price_cents != null ? ` (${o.price_cents}%)` : ""}
                     </span>
                   {/each}
                 </div>
@@ -635,13 +754,28 @@
                 >
                   Edit
                 </button>
-                <button
-                  class="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
-                  on:click={() => onClose(m)}
-                  disabled={(m.status ?? "open") !== "open"}
-                >
-                  Close
-                </button>
+                {#if (m.status ?? "open") === "open"}
+                  <button
+                    class="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
+                    on:click={() => onClose(m)}
+                  >
+                    Close
+                  </button>
+                {:else if m.status === "closed"}
+                  <button
+                    class="rounded-md border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition"
+                    on:click={() => onSettle(m)}
+                  >
+                    Settle
+                  </button>
+                {:else}
+                  <button
+                    class="rounded-md border border-border bg-input px-2 py-1 text-xs opacity-50 cursor-not-allowed"
+                    disabled
+                  >
+                    Settled
+                  </button>
+                {/if}
                 <button
                   class="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-600 dark:text-red-300 hover:bg-red-500/20 transition"
                   on:click={() => onDelete(m)}

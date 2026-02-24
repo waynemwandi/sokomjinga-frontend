@@ -125,6 +125,15 @@ export const Markets = {
         ? { Authorization: `Bearer ${accessToken}` }
         : undefined,
     }),
+
+  settle: (id: string, outcomeId: string, accessToken?: string) =>
+    j<any>(`/markets/${id}/settle`, {
+      method: "POST",
+      body: JSON.stringify({ outcome_id: outcomeId }),
+      headers: accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined,
+    }),
 };
 
 /* ===============================

@@ -95,14 +95,7 @@
   };
 
   const statusMeta = (m: any) => {
-    const s = (m.status ?? "open").toLowerCase();
-
-    if (s === "closed") {
-      return {
-        label: "Closed",
-        cls: "bg-red-500/10 text-red-400 border-red-500/30",
-      };
-    }
+    const s = (m.status ?? "").toLowerCase();
 
     if (s === "open") {
       return {
@@ -111,25 +104,37 @@
       };
     }
 
-    // future-proofing
+    if (s === "closed") {
+      return {
+        label: "Closed",
+        cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      };
+    }
+
+    if (s === "settled") {
+      return {
+        label: "Settled",
+        cls: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      };
+    }
+
     return {
-      label: "Upcoming",
-      cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      label: s || "Unknown",
+      cls: "bg-muted text-muted-foreground border-border",
     };
   };
 
   $: activeCategory =
     $page.url.searchParams.get("category")?.trim() || "All markets";
 
-  $: filteredMarkets = (
+  $: filteredMarkets =
     activeCategory === "All markets"
       ? data.markets
       : data.markets.filter(
           (m: any) =>
             m.category &&
             normalizeCategory(m.category) === normalizeCategory(activeCategory),
-        )
-  ).filter((m: any) => (m.status ?? "open").toLowerCase() !== "closed");
+        );
 </script>
 
 <svelte:head>
@@ -187,18 +192,6 @@
     Grid CONTENT
   =========================== -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
-  <!-- SEO Hero Section -->
-  <!-- <section class="mb-8 max-w-3xl">
-    <h1 class="text-3xl md:text-4xl font-semibold leading-tight mb-3">
-      Kenya’s Real-Money Sentiment Market
-    </h1>
-
-    <p class="text-muted-foreground text-base leading-relaxed">
-      MaoniMarket allows participants to express views on politics, sports,
-      finance and major events using structured Yes/No markets powered by
-      M-Pesa.
-    </p>
-  </section> -->
   {#if activeCategory !== "All markets" && filteredMarkets.length === 0}
     <div class="mt-10 rounded-xl border border-border/60 bg-card/40 px-6 py-16">
       <div class="flex flex-col items-center justify-center text-center">

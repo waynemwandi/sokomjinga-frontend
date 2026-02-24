@@ -156,14 +156,7 @@
   $: totalKES = shares * pricePerShare;
 
   const statusMeta = (m: any) => {
-    const s = (m.status ?? "open").toLowerCase();
-
-    if (s === "closed") {
-      return {
-        label: "Closed",
-        cls: "bg-red-500/10 text-red-400 border-red-500/30",
-      };
-    }
+    const s = (m.status ?? "").toLowerCase();
 
     if (s === "open") {
       return {
@@ -172,9 +165,23 @@
       };
     }
 
+    if (s === "closed") {
+      return {
+        label: "Closed",
+        cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      };
+    }
+
+    if (s === "settled") {
+      return {
+        label: "Settled",
+        cls: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+      };
+    }
+
     return {
-      label: "Upcoming",
-      cls: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+      label: s || "Unknown",
+      cls: "bg-muted text-muted-foreground border-border",
     };
   };
 
@@ -333,6 +340,8 @@
     series.setData(chartData);
     chart.timeScale().fitContent();
   });
+
+  $: isTradable = (market.status ?? "").toLowerCase() === "open";
 </script>
 
 <svelte:head>
@@ -516,12 +525,16 @@
                 {#if yesOutcome}
                   <button
                     type="button"
-                    class={`btn flex flex-col items-center justify-center text-sm ${
-                      selectedOutcome === yesOutcome
-                        ? "btn-yes animate-pulse"
-                        : "bg-card border-border"
-                    }`}
-                    on:click={() => selectOutcome(yesOutcome)}
+                    disabled={!isTradable}
+                    class={`btn flex flex-col items-center justify-center text-sm
+                      ${
+                        selectedOutcome === yesOutcome
+                          ? "btn-yes animate-pulse"
+                          : "bg-card border-border"
+                      }
+                      ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
+                    `}
+                    on:click={() => isTradable && selectOutcome(yesOutcome)}
                   >
                     <span>Yes</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
@@ -533,12 +546,16 @@
                 {#if noOutcome}
                   <button
                     type="button"
-                    class={`btn flex flex-col items-center justify-center text-sm ${
+                    disabled={!isTradable}
+                    class={`btn flex flex-col items-center justify-center text-sm
+                    ${
                       selectedOutcome === noOutcome
-                        ? "btn-no animate-pulse"
+                        ? "btn-yes animate-pulse"
                         : "bg-card border-border"
-                    }`}
-                    on:click={() => selectOutcome(noOutcome)}
+                    }
+                    ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
+                  `}
+                    on:click={() => isTradable && selectOutcome(noOutcome)}
                   >
                     <span>No</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
@@ -560,9 +577,9 @@
                 <div class="flex items-center gap-3">
                   <button
                     type="button"
-                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
-                    on:click={decShares}
-                    aria-label="Decrease shares"
+                    disabled={!isTradable}
+                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                    on:click={() => isTradable && decShares()}
                   >
                     –
                   </button>
@@ -575,9 +592,9 @@
 
                   <button
                     type="button"
-                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent"
-                    on:click={incShares}
-                    aria-label="Increase shares"
+                    disabled={!isTradable}
+                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
+                    on:click={() => isTradable && incShares()}
                   >
                     +
                   </button>
@@ -618,12 +635,19 @@
                   {formatKES(totalKES)}
                 </span>
               </div>
-
+              {#if !isTradable}
+                <div class="text-xs text-amber-400">
+                  This market is no longer open for trading.
+                </div>
+              {/if}
               <!-- Submit -->
               <button
                 type="submit"
                 class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-                disabled={!selectedOutcome || !shares || pricePerShare <= 0}
+                disabled={!isTradable ||
+                  !selectedOutcome ||
+                  !shares ||
+                  pricePerShare <= 0}
               >
                 Place order · {formatKES(totalKES)}
               </button>

@@ -91,6 +91,7 @@ export const Markets = {
         ...(init?.headers || {}),
       },
     }),
+
   priceHistory: (id: string, init?: RequestInit) =>
     j<any>(`/markets/${id}/price-history`, init),
 
@@ -98,6 +99,17 @@ export const Markets = {
     j<any>(`/markets/${id}/bets`, {
       method: "POST",
       body: JSON.stringify(payload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    }),
+
+  settle: (id: string, outcomeId: string, init?: RequestInit) =>
+    j<any>(`/markets/${id}/settle`, {
+      method: "POST",
+      body: JSON.stringify({ outcome_id: outcomeId }),
       ...(init || {}),
       headers: {
         "content-type": "application/json",
