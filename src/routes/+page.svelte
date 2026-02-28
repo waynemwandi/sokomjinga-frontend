@@ -3,7 +3,7 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import { page } from "$app/stores";
 
-  import { Bookmark, Gift } from "lucide-svelte";
+  import { Bookmark, ChartNoAxesCombined, Gift } from "lucide-svelte";
   import { goto } from "$app/navigation";
 
   // Server data
@@ -384,8 +384,16 @@
     >
       <!-- Brand + Description -->
       <div class="max-w-md">
-        <div class="text-sm font-semibold mb-2">MaoniMarket</div>
-        <p class="text-xs text-muted-foreground leading-relaxed">
+        <a href="/" class="inline-flex items-center gap-2 shrink-0">
+          <span
+            class="inline-flex items-center justify-center rounded-md
+          bg-primary text-primary-foreground h-7 w-7"
+          >
+            <ChartNoAxesCombined class="h-4 w-4" />
+          </span>
+          <span class="font-semibold">MaoniMarket</span>
+        </a>
+        <p class="text-xs pt-2 text-muted-foreground leading-relaxed">
           MaoniMarket is a real-money sentiment market platform. Markets reflect
           participant opinion and are not financial advice or investment
           products.

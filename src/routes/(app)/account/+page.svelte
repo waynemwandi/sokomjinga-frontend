@@ -216,6 +216,11 @@
 
   const resultLabel = (r: ResultKind) =>
     r === "pending" ? "Pending" : r.charAt(0).toUpperCase() + r.slice(1);
+
+  let visibleBets = 3;
+  const LOAD_STEP = 3;
+
+  $: visiblePredictions = predictions.slice(0, visibleBets);
 </script>
 
 <main class="space-y-8">
@@ -421,7 +426,7 @@
         </p>
       {:else}
         <div class="space-y-3">
-          {#each predictions as p}
+          {#each visiblePredictions as p}
             <article
               class="rounded-xl border border-border bg-card p-5 hover:border-primary/40 transition-colors"
             >
@@ -509,6 +514,15 @@
             </article>
           {/each}
         </div>
+      {/if}
+      {#if predictions.length > visibleBets}
+        <button
+          type="button"
+          on:click={() => (visibleBets += LOAD_STEP)}
+          class="mt-6 block mx-auto rounded-md border border-border bg-transparent px-4 py-2 text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          Load More
+        </button>
       {/if}
     </div>
   </section>

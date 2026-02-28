@@ -1,7 +1,6 @@
 <!-- src/routes/+layout.svelte -->
 <script lang="ts">
   import "../app.css";
-  import favicon from "$lib/assets/favicon2.svg";
   import { House, Search, ChartNoAxesCombined, Menu } from "lucide-svelte";
 
   let title = "MaoniMarket | Kenya's Largest Prediction Market";
@@ -10,7 +9,6 @@
 </script>
 
 <svelte:head>
-  <link rel="icon" href={favicon} />
   <title>{title}</title>
 
   <!-- Meta Description -->
@@ -42,7 +40,7 @@
 
 <nav
   class="fixed bottom-0 left-0 right-0 z-40 md:hidden
-           border-t border-border bg-background/90 backdrop-blur"
+    border-t border-border bg-background/90 backdrop-blur"
 >
   <div class="grid grid-cols-4 h-16 text-xs">
     <!-- Home -->
