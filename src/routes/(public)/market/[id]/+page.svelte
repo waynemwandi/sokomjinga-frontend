@@ -23,12 +23,7 @@
   const isAuthed = data.isAuthed ?? false;
   const priceHistory = data.priceHistory;
 
-  console.log("CLIENT priceHistory:", priceHistory);
-  console.log("CLIENT priceHistory.outcomes:", priceHistory?.outcomes);
-
   const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
-  // const portfolioHref = data.portfolioHref ?? "/portfolio";
-  // const depositHref = data.depositHref ?? "/portfolio?deposit=1";
 
   type Point = { x: number; y: number };
 
@@ -223,7 +218,7 @@
     ? `Ends ${projectedEndDate}`
     : "Ends –";
 
-  // TEMP placeholders (until backend wires real data)
+  // TODO: TEMP placeholders (until backend wires real data)
   const placeholderDeltaPct = 3; // +3%
 
   let chartEl: HTMLDivElement | null = null;
@@ -234,9 +229,6 @@
     /^(yes|true)$/i.test(o.label ?? ""),
   );
 
-  console.log("YES history resolved:", yesHistory);
-  console.log("YES history points:", yesHistory?.points);
-
   const chartData = yesHistory?.points?.length
     ? yesHistory.points
         .map((p: any, i: number) => ({
@@ -245,9 +237,6 @@
         }))
         .sort((a: any, b: any) => Number(a.time) - Number(b.time))
     : [];
-
-  console.log("chartData length:", chartData.length);
-  console.log("chartData:", chartData);
 
   onMount(async () => {
     if (!chartEl || chartData.length === 0) return;

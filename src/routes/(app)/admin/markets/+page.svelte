@@ -2,6 +2,7 @@
 <script lang="ts">
   import { Markets } from "$lib/api"; // client helper
   import { CircleAlert } from "lucide-svelte";
+  import { invalidateAll } from "$app/navigation";
   export let data: {
     accessToken?: string | null;
     markets: any[];
@@ -30,7 +31,7 @@
   let newDescription = "";
   let newImageUrl = "";
   let newCategory = "";
-  let markets: Market[] = data.markets as Market[];
+  $: markets = data.markets as Market[];
   let loading = false;
   let error: string | null = null;
   let newProjectedEndDate = "";
@@ -44,18 +45,6 @@
   let q = "";
   let onlyOpen = false;
 
-  async function fetchMarkets() {
-    loading = true;
-    error = null;
-    try {
-      markets = await Markets.list();
-    } catch (e: any) {
-      error = e?.message || "Failed to load markets";
-    } finally {
-      loading = false;
-    }
-  }
-
   async function onClose(m: Market) {
     const ok = confirm(
       `Close market “${m.title}”? This will prevent further trading.`,
@@ -63,24 +52,24 @@
     if (!ok) return;
     try {
       await Markets.close(m.id, accessToken);
-      await fetchMarkets();
+      await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Close failed");
     }
   }
 
-  async function onDelete(m: Market) {
-    const ok = confirm(
-      `Delete market “${m.title}”? This action cannot be undone.`,
-    );
-    if (!ok) return;
-    try {
-      await Markets.del(m.id, accessToken);
-      await fetchMarkets();
-    } catch (e: any) {
-      alert(e?.message || "Delete failed");
-    }
-  }
+  // async function onDelete(m: Market) {
+  //   const ok = confirm(
+  //     `Delete market “${m.title}”? This action cannot be undone.`,
+  //   );
+  //   if (!ok) return;
+  //   try {
+  //     await Markets.del(m.id, accessToken);
+  //     await invalidateAll();
+  //   } catch (e: any) {
+  //     alert(e?.message || "Delete failed");
+  //   }
+  // }
 
   async function createMarket() {
     if (!newTitle.trim()) {
@@ -105,7 +94,7 @@
       newImageUrl = "";
       newCategory = "";
       newProjectedEndDate = "";
-      await fetchMarkets();
+      await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Create failed");
     }
@@ -152,7 +141,7 @@
       );
       editOpen = false;
       edit = null;
-      await fetchMarkets();
+      await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Update failed");
     }
@@ -181,11 +170,66 @@
       settleOpen = false;
       settleMarket = null;
       selectedOutcomeId = null;
-      await fetchMarkets();
+      await invalidateAll();
     } catch (e: any) {
-      alert(e?.message || "Settlement failed");
+      if (e?.message?.includes("No bets")) {
+        alert("This market has no bets and cannot be settled.");
+      } else {
+        alert(e?.message || "Settlement failed");
+      }
     }
   }
+
+  function formatDateTime(value?: string) {
+    if (!value) return "—";
+
+    const d = new Date(value);
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = d.toLocaleString("en-GB", { month: "short" });
+    const year = String(d.getFullYear()).slice(-2);
+
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+
+    return `${day}-${month}-${year}, ${hours}:${minutes}`;
+  }
+
+  function formatDate(value?: string) {
+    if (!value) return "—";
+
+    const d = new Date(value);
+
+    const day = String(d.getDate()).padStart(2, "0");
+
+    const month = d.toLocaleString("en-GB", {
+      month: "short",
+    });
+
+    const year = String(d.getFullYear()).slice(-2);
+
+    return `${day}-${month}-${year}`;
+  }
+
+  let refreshing = false;
+
+  async function refreshPage() {
+    refreshing = true;
+    await invalidateAll();
+    refreshing = false;
+  }
+
+  let page = 1;
+  let pageSize = 8;
+
+  $: totalPages = Math.ceil(filtered.length / pageSize);
+  $: paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  // Prevent landing on empty pages
+  $: if (page > totalPages) page = totalPages;
+
+  // Reset to first page on new search or filter
+  $: (filtered, (page = 1));
 </script>
 
 <!-- ===========================
@@ -216,10 +260,9 @@
     <!-- Refresh button -->
     <button
       class="rounded-md border border-border bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 transition"
-      on:click={fetchMarkets}
-      aria-label="Refresh"
+      on:click={refreshPage}
     >
-      Refresh
+      {refreshing ? "Refreshing..." : "Refresh"}
     </button>
 
     <!-- New Market -->
@@ -669,7 +712,7 @@
       </thead>
 
       <tbody>
-        {#each filtered as m (m.id)}
+        {#each paginated as m (m.id)}
           <tr class="border-t border-border">
             <td class="px-3 py-2 align-top">
               <div class="font-medium">{m.title}</div>
@@ -722,24 +765,20 @@
 
             <td class="px-3 py-2 align-top">
               <time class="text-xs text-muted-foreground">
-                {m.created_at
-                  ? new Date(m.created_at as string).toLocaleString()
-                  : "—"}
+                {m.created_at ? formatDateTime(m.created_at) : "—"}
               </time>
             </td>
 
             <td class="px-3 py-2 align-top">
               <time class="text-xs text-muted-foreground">
-                {m.updated_at
-                  ? new Date(m.updated_at as string).toLocaleString()
-                  : "—"}
+                {m.updated_at ? formatDateTime(m.updated_at) : "—"}
               </time>
             </td>
 
             <td class="px-3 py-2 align-top">
               {#if m.projected_end_date}
                 <time class="text-xs text-muted-foreground">
-                  {new Date(m.projected_end_date).toLocaleDateString()}
+                  {formatDate(m.projected_end_date)}
                 </time>
               {:else}
                 <span class="text-xs text-muted-foreground">—</span>
@@ -747,47 +786,67 @@
             </td>
 
             <td class="px-3 py-2 align-top">
-              <div class="flex justify-end gap-2">
+              <div class="flex justify-evenly gap-2">
                 <button
-                  class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-card transition"
+                  class="h-8 px-3 text-xs rounded-md border border-border bg-input hover:bg-card transition"
                   on:click={() => onEdit(m)}
                 >
                   Edit
                 </button>
+
                 {#if (m.status ?? "open") === "open"}
                   <button
-                    class="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
+                    class="h-8 px-3 text-xs rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
                     on:click={() => onClose(m)}
                   >
                     Close
                   </button>
                 {:else if m.status === "closed"}
                   <button
-                    class="rounded-md border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-500/20 transition"
+                    class="h-8 px-3 text-xs rounded-md bg-blue-500/10 text-blue-600 border border-blue-500/30 hover:bg-blue-500/20 transition"
                     on:click={() => onSettle(m)}
                   >
                     Settle
                   </button>
                 {:else}
                   <button
-                    class="rounded-md border border-border bg-input px-2 py-1 text-xs opacity-50 cursor-not-allowed"
+                    class="h-8 px-3 text-xs rounded-md bg-muted text-muted-foreground border border-border cursor-not-allowed"
                     disabled
                   >
                     Settled
                   </button>
                 {/if}
-                <button
-                  class="rounded-md border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-600 dark:text-red-300 hover:bg-red-500/20 transition"
-                  on:click={() => onDelete(m)}
-                >
-                  Delete
-                </button>
               </div>
             </td>
           </tr>
         {/each}
       </tbody>
     </table>
+    <div
+      class="flex items-center justify-between px-3 py-2 border-t border-border bg-card/40 text-xs"
+    >
+      <div>
+        Page {page} of {totalPages}
+      </div>
+
+      <div class="flex gap-2">
+        <button
+          class="px-2 py-1 rounded border border-border bg-input disabled:opacity-40"
+          on:click={() => (page = Math.max(1, page - 1))}
+          disabled={page === 1}
+        >
+          Previous
+        </button>
+
+        <button
+          class="px-2 py-1 rounded border border-border bg-input disabled:opacity-40"
+          on:click={() => (page = Math.min(totalPages, page + 1))}
+          disabled={page === totalPages}
+        >
+          Next
+        </button>
+      </div>
+    </div>
   </div>
 {/if}
 

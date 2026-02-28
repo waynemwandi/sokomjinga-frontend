@@ -9,7 +9,10 @@
 
   let wallet = data.wallet;
   let positions = data.positions;
-  let statement = data.statement?.items ?? [];
+  $: statement = data.statement?.items ?? [];
+  $: total = data.statement?.total ?? 0;
+  $: currentPage = data.page ?? 0;
+  let PAGE_SIZE = data.pageSize ?? 10;
 
   // ---- Derived numbers ------------------------------------------------
   $: availableBalanceKes = (wallet?.balance_cents ?? 0) / 100;
@@ -55,9 +58,13 @@
 
     const updatedStatement = await getJSON<{
       items: any[];
-    }>("/wallet/statement?limit=50");
+      total: number;
+    }>(
+      `/wallet/statement?limit=${PAGE_SIZE}&offset=${currentPage * PAGE_SIZE}`,
+    );
 
     statement = updatedStatement.items ?? [];
+    total = updatedStatement.total ?? 0;
   }
 </script>
 
@@ -195,6 +202,37 @@
           </tbody>
         </table>
       </div>
+
+      <!-- PAGINATION STARTS HERE -->
+      {#if total > PAGE_SIZE}
+        <div class="mt-4 flex items-center justify-between text-sm">
+          <a
+            href={`?page=${Math.max(0, currentPage - 1)}`}
+            data-sveltekit-noscroll
+            class="rounded-md border px-3 py-1 {currentPage === 0
+              ? 'opacity-40 pointer-events-none'
+              : ''}"
+          >
+            Previous
+          </a>
+
+          <span class="text-muted-foreground">
+            Page {currentPage + 1}
+          </span>
+
+          <a
+            href={`?page=${currentPage + 1}`}
+            data-sveltekit-noscroll
+            class="rounded-md border px-3 py-1 {(currentPage + 1) * PAGE_SIZE >=
+            total
+              ? 'opacity-40 pointer-events-none'
+              : ''}"
+          >
+            Next
+          </a>
+        </div>
+      {/if}
+      <!-- PAGINATION ENDS HERE -->
     {/if}
   </section>
 

@@ -15,21 +15,25 @@ const BASE = (
 export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   const token = locals.accessToken;
 
-  // Must be logged in
   if (!token) {
     const redirectTo = encodeURIComponent(url.pathname + url.search);
     throw redirect(302, `/login?redirect=${redirectTo}`);
   }
+
+  const PAGE_SIZE = 10;
+  const page = Number(url.searchParams.get("page") ?? "0");
+  const offset = page * PAGE_SIZE;
 
   const headers = {
     Authorization: `Bearer ${token}`,
     accept: "application/json",
   };
 
-  // Fetch wallet + bets + positions
   const [walletRes, statementRes, positionsRes] = await Promise.all([
     fetch(`${BASE}/wallet/me`, { headers }),
-    fetch(`${BASE}/wallet/statement?limit=50`, { headers }),
+    fetch(`${BASE}/wallet/statement?limit=${PAGE_SIZE}&offset=${offset}`, {
+      headers,
+    }),
     fetch(`${BASE}/me/positions`, { headers }),
   ]);
 
@@ -46,6 +50,7 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   }
 
   const wallet = await walletRes.json();
+
   const statement = statementRes.ok
     ? await statementRes.json().catch(() => ({ items: [], total: 0 }))
     : { items: [], total: 0 };
@@ -54,7 +59,6 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
     ? await positionsRes.json().catch(() => null)
     : null;
 
-  // For navbar link /portfolio?deposit
   const openDeposit = url.searchParams.get("deposit");
 
   return {
@@ -62,6 +66,8 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
     statement,
     positions,
     openDeposit,
+    page,
+    pageSize: PAGE_SIZE,
   };
 };
 

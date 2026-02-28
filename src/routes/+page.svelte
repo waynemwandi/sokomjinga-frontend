@@ -220,8 +220,8 @@
       {#each filteredMarkets as m}
         <article
           class="group rounded-xl border border-border/70 bg-card/80 shadow-sm
-         hover:border-primary/40 transition-all duration-200
-         hover:-translate-y-1 hover:shadow-lg"
+        hover:border-primary/40 transition-all duration-200
+        hover:-translate-y-1 hover:shadow-lg"
         >
           <a href={`/market/${encodeURIComponent(m.id)}`} class="block">
             <!-- HEADER -->
@@ -231,7 +231,7 @@
               <!-- Thumbnail -->
               <div
                 class="h-12 w-12 shrink-0 rounded bg-muted/60 overflow-hidden
-                     flex items-center justify-center text-xs"
+                  flex items-center justify-center text-xs"
               >
                 {#if m.image_url}
                   <img
@@ -250,17 +250,18 @@
                   <h3
                     class="text-sm font-semibold leading-snug overflow-hidden"
                     style="
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-  "
+                      display: -webkit-box;
+                      -webkit-line-clamp: 3;
+                      -webkit-box-orient: vertical;
+                    "
                   >
                     {m.title}
                   </h3>
 
                   <!-- Hover reveal -->
                   <div
-                    class="pointer-events-none absolute z-20 hidden group-hover:block top-full mt-2 w-[280px] rounded-md bg-background border border-border p-3 text-sm shadow-lg"
+                    class="pointer-events-none absolute z-20 hidden group-hover:block top-full mt-2 w-[280px]
+                      rounded-md bg-background border border-border p-3 text-sm shadow-lg"
                   >
                     {m.title}
                   </div>
@@ -276,7 +277,7 @@
                 {#if m.category}
                   <span
                     class="ml-1 inline-flex items-center rounded-md border border-border
-                         px-2 py-0.5 text-[11px] bg-primary/10 text-primary"
+                      px-2 py-0.5 text-[11px] bg-primary/10 text-primary"
                   >
                     {m.category}
                   </span>

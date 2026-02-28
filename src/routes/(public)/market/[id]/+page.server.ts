@@ -19,9 +19,6 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
       : Promise.resolve(null),
   ]);
 
-  console.log("priceHistory from server:", priceHistory);
-  console.log("priceHistory.outcomes:", priceHistory?.outcomes);
-
   const side = url.searchParams.get("side");
   const initialSide =
     side === "yes" || side === "no" ? (side as "yes" | "no") : null;
@@ -67,7 +64,7 @@ export const actions: Actions = {
       // redirect to portfolio deposit modal with suggested amount
       throw redirect(
         303,
-        `/portfolio?deposit=1&amount=${encodeURIComponent(amountKes)}`
+        `/portfolio?deposit=1&amount=${encodeURIComponent(amountKes)}`,
       );
     }
 
@@ -103,7 +100,7 @@ export const actions: Actions = {
           Authorization: `Bearer ${locals.accessToken}`,
           accept: "application/json",
         },
-      }
+      },
     );
 
     // back to same market page; SvelteKit will re-run load
