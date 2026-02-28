@@ -233,9 +233,7 @@
 
     <div class="text-muted-foreground text-balance text-center text-xs mt-4">
       By continuing you agree to our
-      <a class="underline underline-offset-4" href="/admin/dashboard"
-        >Terms of Service</a
-      >
+      <a class="underline underline-offset-4" href="/terms">Terms of Service</a>
       and
       <a class="underline underline-offset-4" href="/privacy">Privacy Policy</a
       >.
