@@ -134,6 +134,14 @@
       (b.volume_cents ?? 0) - (a.volume_cents ?? 0)
     );
   });
+
+  $: if (filteredMarkets) {
+    visibleCount = LOAD_STEP;
+  }
+  let visibleCount = 8;
+  const LOAD_STEP = 8;
+
+  $: visibleMarkets = filteredMarkets.slice(0, visibleCount);
 </script>
 
 <svelte:head>
@@ -217,7 +225,7 @@
     <div
       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
     >
-      {#each filteredMarkets as m}
+      {#each visibleMarkets as m}
         <article
           class="group rounded-xl border border-border/70 bg-card/80 shadow-sm
         hover:border-primary/40 transition-all duration-200
@@ -354,5 +362,65 @@
         </article>
       {/each}
     </div>
+
+    {#if visibleCount < filteredMarkets.length}
+      <div class="mt-8 flex justify-center">
+        <button
+          class="rounded-md border border-border bg-input px-4 py-2 text-sm hover:bg-card transition"
+          on:click={() => (visibleCount += LOAD_STEP)}
+        >
+          See more
+        </button>
+      </div>
+    {/if}
   {/if}
 </main>
+
+<footer class="border-t border-border/60 mt-16">
+  <div class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-10">
+    <!-- Top Row -->
+    <div
+      class="flex flex-col md:flex-row md:items-start md:justify-between gap-8"
+    >
+      <!-- Brand + Description -->
+      <div class="max-w-md">
+        <div class="text-sm font-semibold mb-2">MaoniMarket</div>
+        <p class="text-xs text-muted-foreground leading-relaxed">
+          MaoniMarket is a real-money sentiment market platform. Markets reflect
+          participant opinion and are not financial advice or investment
+          products.
+        </p>
+      </div>
+
+      <!-- Minimal Links -->
+      <div class="flex flex-col gap-2 text-xs text-muted-foreground">
+        <a href="/terms" class="hover:text-foreground transition">
+          Terms of Use
+        </a>
+        <a href="/privacy" class="hover:text-foreground transition">
+          Privacy Policy
+        </a>
+        <a
+          href="mailto:support@maonimarket.com"
+          class="hover:text-foreground transition"
+        >
+          Contact
+        </a>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div
+      class="mt-8 pt-6 border-t border-border/40 text-[11px] text-muted-foreground leading-relaxed space-y-2"
+    >
+      <p>
+        Trading involves risk. Prices are determined by market participants and
+        may not reflect real-world probabilities.
+      </p>
+
+      <p>
+        © {new Date().getFullYear()} MaoniMarket. All rights reserved.
+      </p>
+    </div>
+  </div>
+</footer>
