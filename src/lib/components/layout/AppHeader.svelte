@@ -17,7 +17,7 @@
     CirclePlus,
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
-
+  import { searchQuery } from "$lib/stores/search";
   export let isAuthed: boolean;
   export let portfolioLabel: string = "Portfolio KES 0.00";
   export let portfolioHref: string = "/portfolio";
@@ -50,6 +50,10 @@
     toggleTheme();
     isDark = document.documentElement.classList.contains("dark");
   };
+
+  let query = "";
+
+  $: searchQuery.set(query);
 </script>
 
 <header
@@ -70,13 +74,14 @@
       <span class="font-semibold">MaoniMarket</span>
     </a>
 
-    <!-- Search (DESKTOP ONLY) -->
+    <!-- Search (DESKTOP) -->
     <div class="ml-3 flex-1 hidden sm:block">
       <input
+        bind:value={query}
         class="w-full sm:w-[360px] md:w-[480px] lg:w-[560px]
-          rounded-md border border-border bg-input px-3 py-2 text-sm
-          placeholder-muted-foreground focus:outline-none
-          focus:ring-2 focus:ring-ring"
+      rounded-md border border-border bg-input px-3 py-2 text-sm
+      placeholder-muted-foreground focus:outline-none
+      focus:ring-2 focus:ring-ring"
         placeholder="Search markets"
       />
     </div>
@@ -256,7 +261,7 @@
 {#if !isAuthed && !hideHowItWorksBar}
   <div
     class="fixed bottom-16 left-0 right-0 z-40 sm:hidden
-           border-t border-border bg-background/95 backdrop-blur"
+      border-t border-border bg-background/95 backdrop-blur"
   >
     <div class="relative h-12 flex items-center justify-center px-4 text-sm">
       <button
@@ -272,7 +277,7 @@
 
       <button
         class="absolute right-4 inline-flex h-8 w-8 items-center justify-center
-         rounded-md border border-border bg-card hover:bg-accent transition"
+          rounded-md border border-border bg-card hover:bg-accent transition"
         on:click={() => (hideHowItWorksBar = true)}
         aria-label="Close"
       >
@@ -331,7 +336,7 @@
 
           <button
             class="inline-flex h-8 w-8 items-center justify-center
-         rounded-md hover:bg-accent transition"
+          rounded-md hover:bg-accent transition"
             on:click={() => (showHowItWorks = false)}
             aria-label="Dismiss"
           >

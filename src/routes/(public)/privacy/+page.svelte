@@ -17,9 +17,9 @@
   </div>
   <div
     class="rounded-2xl border border-border/60
-           bg-card/80 backdrop-blur-md
-           shadow-xl shadow-black/20
-           p-8 sm:p-12"
+      bg-card/80 backdrop-blur-md
+      shadow-xl shadow-black/20
+      p-8 sm:p-12"
   >
     <h1 class="text-3xl font-bold mb-4">Privacy Policy</h1>
 

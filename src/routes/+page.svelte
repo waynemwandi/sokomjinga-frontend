@@ -5,14 +5,16 @@
 
   import { Bookmark, ChartNoAxesCombined, Gift } from "lucide-svelte";
   import { goto } from "$app/navigation";
-
+  import { searchQuery, searchResults } from "$lib/stores/search";
   // Server data
-  export let data: {
-    isAuthed: boolean;
-    markets: any[];
-    portfolioLabel?: string | null;
-    selectedCategory?: string;
-  };
+  let { data } = $props<{
+    data: {
+      isAuthed: boolean;
+      markets: any[];
+      portfolioLabel?: string | null;
+      selectedCategory?: string;
+    };
+  }>();
   const normalizeCategory = (v?: string | null) =>
     (v ?? "").trim().toLowerCase();
   let isAuthed = data.isAuthed;
@@ -111,37 +113,48 @@
       cls: "bg-muted text-muted-foreground border-border",
     };
   };
+  let activeCategory = $derived(
+    $page.url.searchParams.get("category")?.trim() || "All markets",
+  );
 
-  $: activeCategory =
-    $page.url.searchParams.get("category")?.trim() || "All markets";
+  let filteredMarkets = $derived(
+    (() => {
+      const categoryFiltered =
+        activeCategory === "All markets"
+          ? [...data.markets]
+          : data.markets.filter(
+              (m: any) =>
+                m.category &&
+                normalizeCategory(m.category) ===
+                  normalizeCategory(activeCategory),
+            );
 
-  $: filteredMarkets = (
-    activeCategory === "All markets"
-      ? [...data.markets]
-      : data.markets.filter(
-          (m: any) =>
-            m.category &&
-            normalizeCategory(m.category) === normalizeCategory(activeCategory),
-        )
-  ).sort((a: any, b: any) => {
-    const av = a.volume_cents ?? 0;
-    const bv = b.volume_cents ?? 0;
-    const statusRank = (s: string) =>
-      s === "open" ? 0 : s === "closed" ? 1 : s === "settled" ? 2 : 3;
+      const q = $searchQuery?.trim().toLowerCase();
 
-    return (
-      statusRank(a.status) - statusRank(b.status) ||
-      (b.volume_cents ?? 0) - (a.volume_cents ?? 0)
-    );
+      const searchFiltered = q
+        ? categoryFiltered.filter((m: any) =>
+            m.title?.toLowerCase().includes(q),
+          )
+        : categoryFiltered;
+
+      const statusRank = (s: string) =>
+        s === "open" ? 0 : s === "closed" ? 1 : s === "settled" ? 2 : 3;
+
+      return searchFiltered.sort(
+        (a: any, b: any) =>
+          statusRank(a.status) - statusRank(b.status) ||
+          (b.volume_cents ?? 0) - (a.volume_cents ?? 0),
+      );
+    })(),
+  );
+
+  $effect(() => {
+    searchResults.set(filteredMarkets);
   });
 
-  $: if (filteredMarkets) {
-    visibleCount = LOAD_STEP;
-  }
-  let visibleCount = 8;
+  let visibleCount = $state(8);
   const LOAD_STEP = 8;
-
-  $: visibleMarkets = filteredMarkets.slice(0, visibleCount);
+  let visibleMarkets = $derived(filteredMarkets.slice(0, visibleCount));
 </script>
 
 <svelte:head>
@@ -184,7 +197,7 @@
             ? "bg-primary/15 text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-accent"
         }`}
-        on:click={() =>
+        onclick={() =>
           goto(
             c === "All markets" ? "/" : `/?category=${encodeURIComponent(c)}`,
           )}
@@ -199,6 +212,11 @@
     Grid CONTENT
   =========================== -->
 <main class="mx-auto w-full max-w-[1400px] px-4 md:px-6 py-6">
+  {#if $searchQuery?.trim()}
+    <div class="mb-4 text-xs text-muted-foreground">
+      {filteredMarkets.length} result{filteredMarkets.length === 1 ? "" : "s"}
+    </div>
+  {/if}
   {#if activeCategory !== "All markets" && filteredMarkets.length === 0}
     <div class="mt-10 rounded-xl border border-border/60 bg-card/40 px-6 py-16">
       <div class="flex flex-col items-center justify-center text-center">
@@ -330,16 +348,20 @@
               <div class="grid grid-cols-2 gap-3">
                 <button
                   class="btn btn-yes"
-                  on:click|preventDefault={() =>
-                    goto(`/market/${m.id}?side=yes`)}
+                  onclick={(e) => {
+                    e.preventDefault();
+                    goto(`/market/${m.id}?side=yes`);
+                  }}
                 >
                   Yes
                 </button>
 
                 <button
                   class="btn btn-no"
-                  on:click|preventDefault={() =>
-                    goto(`/market/${m.id}?side=no`)}
+                  onclick={(e) => {
+                    e.preventDefault();
+                    goto(`/market/${m.id}?side=no`);
+                  }}
                 >
                   No
                 </button>
@@ -367,7 +389,7 @@
       <div class="mt-8 flex justify-center">
         <button
           class="rounded-md border border-border bg-input px-4 py-2 text-sm hover:bg-card transition"
-          on:click={() => (visibleCount += LOAD_STEP)}
+          onclick={() => (visibleCount += LOAD_STEP)}
         >
           See more
         </button>
