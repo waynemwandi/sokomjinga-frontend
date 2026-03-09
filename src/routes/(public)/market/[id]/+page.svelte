@@ -218,16 +218,25 @@
     ? `Ends ${projectedEndDate}`
     : "Ends –";
 
-  // TODO: TEMP placeholders (until backend wires real data)
-  const placeholderDeltaPct = 3; // +3%
-
   let chartEl: HTMLDivElement | null = null;
-  let chart: IChartApi | null = null;
-  let series: ISeriesApi<"Area"> | null = null;
+  // let chart: IChartApi | null = null;
+  // let series: ISeriesApi<"Area"> | null = null;
 
   const yesHistory = priceHistory?.outcomes?.find((o: any) =>
     /^(yes|true)$/i.test(o.label ?? ""),
   );
+
+  const deltaPct = (() => {
+    if (!yesHistory?.points?.length) return null;
+
+    const pts = yesHistory.points;
+    if (pts.length < 2) return 0;
+
+    const last = pts[pts.length - 1].price_cents;
+    const prev = pts[pts.length - 2].price_cents;
+
+    return Math.round(last - prev);
+  })();
 
   const chartData = yesHistory?.points?.length
     ? yesHistory.points
@@ -415,10 +424,18 @@
       </div>
 
       <!-- Placeholder uptick -->
-      <div class="flex items-center gap-1 text-sm font-medium text-emerald-400">
-        <span class="inline-block translate-y-[1px]">▲</span>
-        <span>{placeholderDeltaPct}%</span>
-      </div>
+      {#if deltaPct !== null}
+        <div
+          class={`flex items-center gap-1 text-sm font-medium ${
+            deltaPct >= 0 ? "text-emerald-400" : "text-red-400"
+          }`}
+        >
+          <span class="inline-block translate-y-[1px]">
+            {deltaPct >= 0 ? "▲" : "▼"}
+          </span>
+          <span>{Math.abs(deltaPct)}%</span>
+        </div>
+      {/if}
     </div>
 
     <!-- Volume + projected end -->
@@ -539,7 +556,7 @@
                     class={`btn flex flex-col items-center justify-center text-sm
                     ${
                       selectedOutcome === noOutcome
-                        ? "btn-yes animate-pulse"
+                        ? "btn-no animate-pulse"
                         : "bg-card border-border"
                     }
                     ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
