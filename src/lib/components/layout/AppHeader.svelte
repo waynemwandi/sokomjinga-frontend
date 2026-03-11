@@ -18,6 +18,9 @@
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
   import { searchQuery } from "$lib/stores/search";
+  import { onDestroy } from "svelte";
+  import { browser } from "$app/environment";
+
   export let isAuthed: boolean;
   export let portfolioLabel: string = "Portfolio KES 0.00";
   export let portfolioHref: string = "/portfolio";
@@ -54,6 +57,20 @@
   let query = "";
 
   $: searchQuery.set(query);
+
+  $: if (browser) {
+    if (showHowItWorks) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+  }
+
+  onDestroy(() => {
+    if (browser) {
+      document.body.style.overflow = "";
+    }
+  });
 </script>
 
 <header
@@ -90,7 +107,7 @@
       <!-- <button
         class="inline-flex h-9 w-9 items-center justify-center
              rounded-md border border-border bg-input hover:bg-card transition"
-        on:click={toggleTheme}
+        onclick={toggleTheme}
         aria-label="Toggle theme"
       >
         <Sun
@@ -128,7 +145,7 @@
           href={depositHref}
           class="hidden md:inline-flex rounded-md bg-primary
                px-3 py-2 text-sm text-primary-foreground hover:opacity-90"
-          on:click={handleDepositClick}
+          onclick={handleDepositClick}
         >
           Deposit
         </a>
@@ -140,7 +157,7 @@
                  border border-border bg-card p-2"
             aria-haspopup="menu"
             aria-expanded={openMenu}
-            on:click={() => (openMenu = !openMenu)}
+            onclick={() => (openMenu = !openMenu)}
           >
             <Menu class="h-4 w-4" />
           </button>
@@ -149,7 +166,7 @@
             <div
               class="absolute right-0 mt-2 w-56 rounded-xl
                 border border-border bg-popover shadow-lg p-1 text-sm"
-              on:focusout={(e) => {
+              onfocusout={(e) => {
                 const el = e.currentTarget as HTMLElement;
                 if (!el.contains(e.relatedTarget as Node)) openMenu = false;
               }}
@@ -158,7 +175,7 @@
                 href="/account"
                 class="flex items-center gap-2 rounded-lg px-3 py-2
                   hover:bg-accent hover:text-accent-foreground"
-                on:click={() => (openMenu = false)}
+                onclick={() => (openMenu = false)}
               >
                 <UserRound class="h-4 w-4" />
                 Profile
@@ -168,7 +185,7 @@
                 type="button"
                 class="flex w-full items-center gap-2 rounded-lg px-3 py-2
                   hover:bg-accent hover:text-accent-foreground text-left"
-                on:click={() => {
+                onclick={() => {
                   openMenu = false;
                   showHowItWorks = true;
                   step = 1;
@@ -184,7 +201,7 @@
                 rel="noopener noreferrer"
                 class="flex items-center gap-2 rounded-lg px-3 py-2
          hover:bg-accent hover:text-accent-foreground"
-                on:click={() => (openMenu = false)}
+                onclick={() => (openMenu = false)}
               >
                 <CirclePlus class="h-4 w-4" />
                 Suggest a market
@@ -201,7 +218,7 @@
                   aria-label="Toggle dark mode"
                   class={`relative inline-flex h-6 w-11 items-center rounded-full transition
                     ${isDark ? "bg-emerald-500" : "bg-muted"}`}
-                  on:click={handleThemeToggle}
+                  onclick={handleThemeToggle}
                 >
                   <span
                     class={`inline-block h-5 w-5 transform rounded-full bg-white transition
@@ -229,7 +246,7 @@
         <!-- NOT AUTHED -->
         <button
           class="hidden sm:inline-flex items-center gap-2 text-sm text-muted-foreground px-2 hover:text-foreground"
-          on:click={() => {
+          onclick={() => {
             showHowItWorks = true;
             step = 1;
           }}
@@ -266,7 +283,7 @@
     <div class="relative h-12 flex items-center justify-center px-4 text-sm">
       <button
         class="flex items-center gap-2 text-primary font-medium"
-        on:click={() => {
+        onclick={() => {
           showHowItWorks = true;
           step = 1;
         }}
@@ -278,7 +295,7 @@
       <button
         class="absolute right-4 inline-flex h-8 w-8 items-center justify-center
           rounded-md border border-border bg-card hover:bg-accent transition"
-        on:click={() => (hideHowItWorksBar = true)}
+        onclick={() => (hideHowItWorksBar = true)}
         aria-label="Close"
       >
         <X class="h-4 w-4" />
@@ -290,30 +307,37 @@
 {#if showHowItWorks}
   <div
     class="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center sm:justify-center"
+    role="button"
+    tabindex="0"
+    onclick={() => (showHowItWorks = false)}
+    onkeydown={(e) => {
+      if (e.key === "Escape" || e.key === "Enter") {
+        showHowItWorks = false;
+      }
+    }}
   >
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <!-- No Keyboard Input Required in Image div -->
     <div
-      class="
-        w-full
-        sm:max-w-md
-        overflow-hidden
-        bg-card
-        border border-border
-        shadow-xl
-        rounded-t-2xl sm:rounded-xl
-        max-h-[90vh]
-        overflow-y-auto
-      "
+      class="w-full sm:max-w-md overflow-hidden bg-card border border-border shadow-xl rounded-t-2xl sm:rounded-xl max-h-[90vh] overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      onclick={(e) => e.stopPropagation()}
     >
       <!-- IMAGE -->
-      <div class="relative h-48 w-full bg-muted">
+      <div
+        class="relative h-full w-full bg-muted flex items-center justify-center"
+      >
         <img
           src={step === 1
-            ? "/how-step-1.png"
+            ? "/how-step-1.webp"
             : step === 2
-              ? "/how-step-2.png"
-              : "/how-step-3.png"}
+              ? "/how-step-2.webp"
+              : "/how-step-3.webp"}
           alt="Step illustration"
-          class="h-full w-full object-cover"
+          loading="lazy"
+          class="h-full w-full object-contain"
         />
         <div
           class="absolute inset-0 bg-gradient-to-b from-transparent to-card"
@@ -337,7 +361,7 @@
           <button
             class="inline-flex h-8 w-8 items-center justify-center
           rounded-md hover:bg-accent transition"
-            on:click={() => (showHowItWorks = false)}
+            onclick={() => (showHowItWorks = false)}
             aria-label="Dismiss"
           >
             <ChevronDown class="h-5 w-5" />
@@ -368,14 +392,14 @@
           {#if step < 3}
             <button
               class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-              on:click={() => step++}
+              onclick={() => step++}
             >
               Next
             </button>
           {:else}
             <button
               class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-              on:click={() => {
+              onclick={() => {
                 showHowItWorks = false;
                 if (!isAuthed) goto("/login");
               }}
