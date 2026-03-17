@@ -2,10 +2,12 @@
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import { page } from "$app/stores";
-
+  import { onMount, onDestroy } from "svelte";
   import { Bookmark, ChartNoAxesCombined, Gift } from "lucide-svelte";
   import { goto } from "$app/navigation";
   import { searchQuery, searchResults } from "$lib/stores/search";
+  import { PUBLIC_API_BASE } from "$env/static/public";
+
   // Server data
   let { data } = $props<{
     data: {
@@ -19,6 +21,7 @@
     (v ?? "").trim().toLowerCase();
   let isAuthed = data.isAuthed;
   let portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
+  let markets = $state(data.markets);
 
   const categories = [
     "All markets",
@@ -113,6 +116,48 @@
       cls: "bg-muted text-muted-foreground border-border",
     };
   };
+
+  let pollingInterval: ReturnType<typeof setInterval>;
+
+  const fetchMarkets = async () => {
+    try {
+      const res = await fetch(`${PUBLIC_API_BASE}/markets`, {
+        headers: { accept: "application/json" },
+      });
+
+      if (!res.ok) return;
+
+      const updated = await res.json();
+
+      if (!Array.isArray(updated)) return;
+
+      // Normalize same as server
+      const normalized = updated.map((m) => ({
+        ...m,
+        image_url: m.image_url ?? m.img ?? null,
+        volume_cents: m.volume_cents ?? 0,
+      }));
+
+      if (JSON.stringify(markets) !== JSON.stringify(normalized)) {
+        markets = normalized;
+      }
+    } catch (err) {
+      console.error("Polling failed:", err);
+    }
+  };
+
+  onMount(() => {
+    fetchMarkets();
+
+    pollingInterval = setInterval(() => {
+      fetchMarkets();
+    }, 3000);
+  });
+
+  onDestroy(() => {
+    if (pollingInterval) clearInterval(pollingInterval);
+  });
+
   let activeCategory = $derived(
     $page.url.searchParams.get("category")?.trim() || "All markets",
   );
@@ -121,8 +166,8 @@
     (() => {
       const categoryFiltered =
         activeCategory === "All markets"
-          ? [...data.markets]
-          : data.markets.filter(
+          ? [...markets]
+          : markets.filter(
               (m: any) =>
                 m.category &&
                 normalizeCategory(m.category) ===
@@ -158,20 +203,20 @@
 </script>
 
 <svelte:head>
-  <title>MaoniMarket | Kenya’s Real-Money Sentiment Market</title>
+  <title>MaoniMarket | Kenya’s Largest Prediction Market</title>
 
   <meta
     name="description"
-    content="MaoniMarket is Kenya’s real-money sentiment market. Express views on politics, sports, finance and major events using structured Yes/No markets powered by M-Pesa."
+    content="MaoniMarket is Kenya’s largest prediction market. Trade Yes/No markets on politics, sports and major events using M-Pesa."
   />
 
   <meta
     property="og:title"
-    content="MaoniMarket – Kenya’s Real-Money Sentiment Market"
+    content="MaoniMarket – Kenya’s Largest Prediction Market"
   />
   <meta
     property="og:description"
-    content="Express views on politics, sports and major events using structured markets powered by M-Pesa."
+    content="Trade Yes/No markets on politics, sports and major events using structured markets powered by M-Pesa."
   />
   <meta property="og:image" content="https://maonimarket.com/og-banner.png" />
   <meta property="og:type" content="website" />
@@ -243,7 +288,7 @@
     <div
       class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
     >
-      {#each visibleMarkets as m}
+      {#each visibleMarkets as m (m.id)}
         <article
           class="group rounded-xl border border-border/70 bg-card/80 shadow-sm
         hover:border-primary/40 transition-all duration-200
@@ -424,6 +469,13 @@
 
       <!-- Minimal Links -->
       <div class="flex flex-col gap-2 text-xs text-muted-foreground">
+        <a
+          href="https://forms.gle/HEwNNnT6pSWZfaNT6"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hover:text-foreground transition">Suggest a Market</a
+        >
+        <a href="/" class="hover:text-foreground transition">How It Works </a>
         <a href="/terms" class="hover:text-foreground transition">
           Terms of Use
         </a>
@@ -431,7 +483,7 @@
           Privacy Policy
         </a>
         <a
-          href="mailto:support@maonimarket.com"
+          href="mailto:maonimarket@gmail.com"
           class="hover:text-foreground transition"
         >
           Contact

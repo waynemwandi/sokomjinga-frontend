@@ -34,17 +34,17 @@
   <!-- Meta Description -->
   <meta
     name="description"
-    content="MaoniMarket is Kenya’s real-money sentiment platform. Trade Yes/No markets on politics, sports and major events using M-Pesa."
+    content="MaoniMarket is Kenya’s Largest Prediction Market. Trade Yes/No markets on politics, sports and major events using M-Pesa."
   />
 
   <!-- OpenGraph -->
   <meta
     property="og:title"
-    content="MaoniMarket – Kenya’s Real-Money Sentiment Market"
+    content="MaoniMarket – Kenya’s Largest Prediction Market"
   />
   <meta
     property="og:description"
-    content="Express views on real-world events through structured Yes/No markets. Powered by M-Pesa."
+    content="Trade Yes/No markets on politics, sports and major events using structured markets powered by M-Pesa."
   />
   <meta property="og:url" content="https://maonimarket.com" />
   <meta property="og:type" content="website" />

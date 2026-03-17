@@ -12,16 +12,19 @@
   } from "lightweight-charts";
 
   import { onMount, onDestroy } from "svelte";
+  import { PUBLIC_API_BASE } from "$env/static/public";
 
-  export let data: PageData & {
-    priceHistory?: any;
-    initialSide?: "yes" | "no" | null;
-  };
+  let { data } = $props<{
+    data: PageData & {
+      priceHistory?: any;
+      initialSide?: "yes" | "no" | null;
+    };
+  }>();
 
-  const market = data.market;
-  const outcomes = data.outcomes ?? [];
+  let market = $state(data.market);
+  let outcomes = $state(data.outcomes ?? []);
+  let priceHistory = $state(data.priceHistory);
   const isAuthed = data.isAuthed ?? false;
-  const priceHistory = data.priceHistory;
 
   const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
 
@@ -108,26 +111,50 @@
   const isNo = (o: any) => /^(no|false)$/i.test(o?.name ?? o?.label ?? "");
 
   // --- Buy panel state (selected side + shares) -----------------------
-  const yesOutcome: any = outcomes.find((o: any) => isYes(o));
-  const noOutcome: any = outcomes.find((o: any) => isNo(o));
+  type Outcome = {
+    id: string;
+    label?: string;
+    name?: string;
+    price_cents?: number;
+    price?: number;
+    price_kes?: number;
+  };
 
-  let selectedSide: "yes" | "no" =
-    (data.initialSide as "yes" | "no" | null) ?? "yes";
+  const yesOutcome = $derived(outcomes.find((o: Outcome) => isYes(o)));
 
-  let selectedOutcome: any;
+  const noOutcome = $derived(outcomes.find((o: Outcome) => isNo(o)));
 
-  if (data.initialSide === "yes" && yesOutcome) {
-    selectedSide = "yes";
-    selectedOutcome = yesOutcome;
-  } else if (data.initialSide === "no" && noOutcome) {
-    selectedSide = "no";
-    selectedOutcome = noOutcome;
-  } else {
-    selectedOutcome =
-      yesOutcome ?? noOutcome ?? (outcomes.length ? outcomes[0] : null);
-  }
+  $effect(() => {
+    if (selectedOutcome && outcomes.length) {
+      const match = outcomes.find((o: Outcome) => o.id === selectedOutcome?.id);
 
-  let shares = 1;
+      if (match) {
+        selectedOutcome = match;
+      }
+    }
+  });
+
+  let selectedSide = $state<"yes" | "no">(
+    (data.initialSide as "yes" | "no" | null) ?? "yes",
+  );
+
+  let selectedOutcome = $state<Outcome | null>(null);
+
+  let shares = $state(1);
+
+  $effect(() => {
+    if (!selectedOutcome && outcomes.length) {
+      if (data.initialSide === "yes" && yesOutcome) {
+        selectedOutcome = yesOutcome;
+        selectedSide = "yes";
+      } else if (data.initialSide === "no" && noOutcome) {
+        selectedOutcome = noOutcome;
+        selectedSide = "no";
+      } else {
+        selectedOutcome = yesOutcome ?? noOutcome ?? outcomes[0];
+      }
+    }
+  });
 
   const selectOutcome = (o: any) => {
     selectedOutcome = o;
@@ -147,9 +174,10 @@
     if (shares > 1) shares = shares - 1;
   };
 
-  $: pricePerShare = selectedOutcome ? priceOf(selectedOutcome) : 0;
-  $: totalKES = shares * pricePerShare;
-
+  const pricePerShare = $derived(
+    selectedOutcome ? priceOf(selectedOutcome) : 0,
+  );
+  const totalKES = $derived(shares * pricePerShare);
   const statusMeta = (m: any) => {
     const s = (m.status ?? "").toLowerCase();
 
@@ -180,18 +208,21 @@
     };
   };
 
-  const yesOutcomeStats = outcomes.find((o: any) =>
-    /^(yes|true)$/i.test(o?.label ?? o?.name ?? ""),
+  const yesOutcomeStats = $derived(
+    outcomes.find((o: any) => /^(yes|true)$/i.test(o?.label ?? o?.name ?? "")),
   );
 
-  const yesPct = yesOutcomeStats ? Math.round(priceOf(yesOutcomeStats)) : null;
+  const yesPct = $derived(
+    yesOutcomeStats ? Math.round(priceOf(yesOutcomeStats)) : null,
+  );
 
-  const volumeKES =
+  const volumeKES = $derived(
     typeof market.volume_cents === "number"
       ? market.volume_cents / 100
       : typeof market.volume_kes === "number"
         ? market.volume_kes
-        : null;
+        : null,
+  );
 
   const formatCompactKES = (v: number) => {
     if (v < 10_000) return `KES ${v.toLocaleString("en-KE")}`;
@@ -200,58 +231,154 @@
     return `KES ${(v / 1_000_000_000).toFixed(1)}B`;
   };
 
-  const projectedEndDate = market.projected_end_date
-    ? new Date(market.projected_end_date).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : null;
+  let pollingInterval: ReturnType<typeof setInterval>;
 
-  const hasVolume = typeof volumeKES === "number" && volumeKES > 0;
+  const fetchMarket = async () => {
+    try {
+      const res = await fetch(`${PUBLIC_API_BASE}/markets/${market.id}`, {
+        headers: { accept: "application/json" },
+      });
 
-  const volumeLabel = hasVolume
-    ? `${formatCompactKES(volumeKES)} Vol.`
-    : "– Vol.";
+      if (!res.ok) return;
 
-  const projectedEndLabel = projectedEndDate
-    ? `Ends ${projectedEndDate}`
-    : "Ends –";
+      const updated = await res.json();
 
-  let chartEl: HTMLDivElement | null = null;
-  // let chart: IChartApi | null = null;
-  // let series: ISeriesApi<"Area"> | null = null;
+      if (!updated) return;
 
-  const yesHistory = priceHistory?.outcomes?.find((o: any) =>
-    /^(yes|true)$/i.test(o.label ?? ""),
+      // Normalize (same philosophy as homepage)
+      const updatedMarket = {
+        ...updated,
+        image_url: updated.image_url ?? updated.img ?? null,
+        volume_cents: updated.volume_cents ?? 0,
+      };
+
+      const updatedOutcomes = updated.outcomes ?? [];
+
+      // Prevent unnecessary updates
+      const hasChanged =
+        JSON.stringify(market) !== JSON.stringify(updatedMarket) ||
+        JSON.stringify(outcomes) !== JSON.stringify(updatedOutcomes);
+
+      if (hasChanged) {
+        market = updatedMarket;
+        outcomes = updatedOutcomes;
+      }
+    } catch (err) {
+      console.error("Market polling failed:", err);
+    }
+  };
+
+  const fetchPriceHistory = async () => {
+    try {
+      const res = await fetch(
+        `${PUBLIC_API_BASE}/markets/${market.id}/price-history`,
+      );
+
+      if (!res.ok) return;
+
+      const updated = await res.json();
+
+      if (!updated) return;
+
+      priceHistory = updated;
+    } catch (err) {
+      console.error("Price history polling failed:", err);
+    }
+  };
+
+  const updateChart = (history: any) => {
+    if (!series || !history?.outcomes) return;
+
+    const yes = history.outcomes.find((o: any) =>
+      /^(yes|true)$/i.test(o.label ?? ""),
+    );
+
+    if (!yes?.points?.length) return;
+
+    const data = yes.points
+      .map((p: any, i: number) => ({
+        time: Math.floor(new Date(p.t).getTime() / 1000) + i,
+        value: p.price_cents,
+      }))
+      .sort((a: any, b: any) => a.time - b.time);
+
+    series.setData(data);
+  };
+  onMount(() => {
+    fetchMarket();
+    fetchPriceHistory();
+
+    pollingInterval = setInterval(() => {
+      fetchMarket();
+      fetchPriceHistory();
+    }, 3000);
+  });
+  onDestroy(() => {
+    if (pollingInterval) clearInterval(pollingInterval);
+  });
+
+  const projectedEndDate = $derived(
+    market.projected_end_date
+      ? new Date(market.projected_end_date).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : null,
   );
 
-  const deltaPct = (() => {
-    if (!yesHistory?.points?.length) return null;
+  const hasVolume = $derived(typeof volumeKES === "number" && volumeKES > 0);
 
-    const pts = yesHistory.points;
-    if (pts.length < 2) return 0;
+  const volumeLabel = $derived(
+    hasVolume ? `${formatCompactKES(volumeKES)} Vol.` : "– Vol.",
+  );
 
-    const last = pts[pts.length - 1].price_cents;
-    const prev = pts[pts.length - 2].price_cents;
+  const projectedEndLabel = $derived(
+    projectedEndDate ? `Ends ${projectedEndDate}` : "Ends –",
+  );
 
-    return Math.round(last - prev);
-  })();
+  let chartEl = $state<HTMLDivElement | null>(null);
+  let chart: IChartApi | null = null;
+  let series: ISeriesApi<"Area"> | null = null;
 
-  const chartData = yesHistory?.points?.length
-    ? yesHistory.points
-        .map((p: any, i: number) => ({
-          time: Math.floor(new Date(p.t).getTime() / 1000) + i,
-          value: p.price_cents,
-        }))
-        .sort((a: any, b: any) => Number(a.time) - Number(b.time))
-    : [];
+  const yesHistory = $derived(
+    priceHistory?.outcomes?.find((o: any) =>
+      /^(yes|true)$/i.test(o.label ?? ""),
+    ),
+  );
+
+  const deltaPct = $derived(
+    yesHistory?.points?.length
+      ? yesHistory.points.length < 2
+        ? 0
+        : Math.round(
+            yesHistory.points[yesHistory.points.length - 1].price_cents -
+              yesHistory.points[yesHistory.points.length - 2].price_cents,
+          )
+      : null,
+  );
+
+  const chartData = $derived(
+    yesHistory?.points?.length
+      ? yesHistory.points
+          .map((p: any, i: number) => ({
+            time: Math.floor(new Date(p.t).getTime() / 1000) + i,
+            value: p.price_cents,
+          }))
+          .sort((a: any, b: any) => Number(a.time) - Number(b.time))
+      : [],
+  );
+
+  $effect(() => {
+    if (!series || !chartData.length) return;
+    series.setData(chartData);
+  });
 
   onMount(async () => {
-    if (!chartEl || chartData.length === 0) return;
+    if (!chartEl) return;
     const { createChart } = await import("lightweight-charts");
 
-    const chart = createChart(chartEl, {
+    chart = createChart(chartEl, {
       layout: {
         background: { color: "transparent" },
         textColor: "#94a3b8",
@@ -283,7 +410,6 @@
           const rangeDays = (now - d.getTime()) / (1000 * 60 * 60 * 24);
 
           if (rangeDays < 1) {
-            // intraday
             return d.toLocaleTimeString("en-GB", {
               hour: "2-digit",
               minute: "2-digit",
@@ -291,21 +417,18 @@
           }
 
           if (rangeDays < 60) {
-            // days
             return d.toLocaleDateString("en-GB", {
               day: "numeric",
               month: "short",
             });
           }
 
-          // long range
           return d.toLocaleDateString("en-GB", {
             month: "short",
             year: "numeric",
           });
         },
       },
-
       rightPriceScale: {
         borderVisible: false,
         scaleMargins: { top: 0.15, bottom: 0.15 },
@@ -317,7 +440,6 @@
         horzTouchDrag: false,
         vertTouchDrag: false,
       },
-
       handleScale: {
         axisPressedMouseMove: false,
         mouseWheel: false,
@@ -329,17 +451,20 @@
       },
     });
 
-    const series = chart.addAreaSeries({
+    series = chart.addAreaSeries({
       lineColor: "#2dd4bf",
       topColor: "rgba(45,212,191,0.35)",
       bottomColor: "rgba(45,212,191,0.02)",
     });
 
     series.setData(chartData);
+    if (priceHistory) {
+      updateChart(priceHistory);
+    }
     chart.timeScale().fitContent();
   });
 
-  $: isTradable = (market.status ?? "").toLowerCase() === "open";
+  const isTradable = $derived((market.status ?? "").toLowerCase() === "open");
 </script>
 
 <svelte:head>
@@ -366,7 +491,7 @@
     {#each categories as c}
       <button
         class="shrink-0 rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
-        on:click={() => goto(`/?category=${encodeURIComponent(c)}`)}
+        onclick={() => goto(`/?category=${encodeURIComponent(c)}`)}
       >
         {c}
       </button>
@@ -540,7 +665,7 @@
                       }
                       ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
                     `}
-                    on:click={() => isTradable && selectOutcome(yesOutcome)}
+                    onclick={() => isTradable && selectOutcome(yesOutcome)}
                   >
                     <span>Yes</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
@@ -561,7 +686,7 @@
                     }
                     ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
                   `}
-                    on:click={() => isTradable && selectOutcome(noOutcome)}
+                    onclick={() => isTradable && selectOutcome(noOutcome)}
                   >
                     <span>No</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
@@ -585,7 +710,7 @@
                     type="button"
                     disabled={!isTradable}
                     class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    on:click={() => isTradable && decShares()}
+                    onclick={() => isTradable && decShares()}
                   >
                     –
                   </button>
@@ -600,7 +725,7 @@
                     type="button"
                     disabled={!isTradable}
                     class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    on:click={() => isTradable && incShares()}
+                    onclick={() => isTradable && incShares()}
                   >
                     +
                   </button>
@@ -612,21 +737,21 @@
                 <button
                   type="button"
                   class="rounded-md bg-input px-2 py-1 text-xs"
-                  on:click={() => (shares = shares + 1)}
+                  onclick={() => (shares = shares + 1)}
                 >
                   +1
                 </button>
                 <button
                   type="button"
                   class="rounded-md bg-input px-2 py-1 text-xs"
-                  on:click={() => (shares = shares + 5)}
+                  onclick={() => (shares = shares + 5)}
                 >
                   +5
                 </button>
                 <button
                   type="button"
                   class="rounded-md bg-input px-2 py-1 text-xs"
-                  on:click={() => (shares = shares + 10)}
+                  onclick={() => (shares = shares + 10)}
                 >
                   +10
                 </button>
