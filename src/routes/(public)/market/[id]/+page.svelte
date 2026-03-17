@@ -24,6 +24,8 @@
   let market = $state(data.market);
   let outcomes = $state(data.outcomes ?? []);
   let priceHistory = $state(data.priceHistory);
+  let selectedRange = $state<"1H" | "1D" | "1W" | "1M" | "ALL">("ALL");
+
   const isAuthed = data.isAuthed ?? false;
 
   const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
@@ -281,29 +283,12 @@
       if (!updated) return;
 
       priceHistory = updated;
+      updateChart();
     } catch (err) {
       console.error("Price history polling failed:", err);
     }
   };
 
-  const updateChart = (history: any) => {
-    if (!series || !history?.outcomes) return;
-
-    const yes = history.outcomes.find((o: any) =>
-      /^(yes|true)$/i.test(o.label ?? ""),
-    );
-
-    if (!yes?.points?.length) return;
-
-    const data = yes.points
-      .map((p: any, i: number) => ({
-        time: Math.floor(new Date(p.t).getTime() / 1000) + i,
-        value: p.price_cents,
-      }))
-      .sort((a: any, b: any) => a.time - b.time);
-
-    series.setData(data);
-  };
   onMount(() => {
     fetchMarket();
     fetchPriceHistory();
@@ -358,21 +343,60 @@
       : null,
   );
 
-  const chartData = $derived(
-    yesHistory?.points?.length
-      ? yesHistory.points
-          .map((p: any, i: number) => ({
-            time: Math.floor(new Date(p.t).getTime() / 1000) + i,
-            value: p.price_cents,
-          }))
-          .sort((a: any, b: any) => Number(a.time) - Number(b.time))
-      : [],
-  );
+  const filterByRange = (points: any[], range: string) => {
+    if (!points?.length || range === "ALL") return points;
 
-  $effect(() => {
-    if (!series || !chartData.length) return;
-    series.setData(chartData);
-  });
+    const now = Date.now();
+
+    const ranges: Record<string, number> = {
+      "1H": 60 * 60 * 1000,
+      "1D": 24 * 60 * 60 * 1000,
+      "1W": 7 * 24 * 60 * 60 * 1000,
+      "1M": 30 * 24 * 60 * 60 * 1000,
+    };
+
+    const cutoff = now - (ranges[range] ?? 0);
+
+    const filtered = points.filter((p) => new Date(p.t).getTime() >= cutoff);
+
+    // fallback: if filter kills everything, show last few points
+    return filtered;
+  };
+
+  function buildChartData() {
+    if (!yesHistory?.points?.length) return [];
+
+    const mapped = filterByRange(yesHistory.points, selectedRange)
+      .map((p: any, i: number) => ({
+        time: (Math.floor(new Date(p.t).getTime() / 1000) + i) as Time,
+        value: p.price_cents,
+      }))
+      .sort((a: any, b: any) => Number(a.time) - Number(b.time));
+
+    if (mapped.length === 1) {
+      return [
+        mapped[0],
+        {
+          ...mapped[0],
+          time: ((mapped[0].time as number) + 1) as Time,
+        },
+      ];
+    }
+
+    return mapped;
+  }
+
+  const hasChartData = $derived(buildChartData().length > 0);
+
+  function updateChart() {
+    if (!series || !chart) return;
+
+    const data = buildChartData();
+
+    series.setData(data);
+
+    chart.timeScale().fitContent();
+  }
 
   onMount(async () => {
     if (!chartEl) return;
@@ -456,11 +480,7 @@
       topColor: "rgba(45,212,191,0.35)",
       bottomColor: "rgba(45,212,191,0.02)",
     });
-
-    series.setData(chartData);
-    if (priceHistory) {
-      updateChart(priceHistory);
-    }
+    updateChart();
     chart.timeScale().fitContent();
   });
 
@@ -579,18 +599,36 @@
           class="rounded-xl border border-border/50 bg-card text-sm font-medium"
         >
           <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
-            <div class="h-full rounded-lg bg-background/40 p-4">
-              {#if chartData.length}
-                <div class="relative w-full h-[300px]">
-                  <div bind:this={chartEl} class="w-full h-full"></div>
-                </div>
-              {:else}
-                <div
-                  class="h-full flex items-center justify-center text-sm text-muted-foreground"
+            <!-- Range selector -->
+            <div class="flex justify-end gap-2 mb-2">
+              {#each ["1H", "1D", "1W", "1M", "ALL"] as r (r)}
+                <button
+                  class={`px-2 py-1 text-xs rounded-md border ${
+                    selectedRange === r
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border text-muted-foreground"
+                  }`}
+                  onclick={() => {
+                    selectedRange = r as typeof selectedRange;
+                    updateChart();
+                  }}
                 >
-                  No price history yet.
-                </div>
-              {/if}
+                  {r}
+                </button>
+              {/each}
+            </div>
+            <div class="h-full rounded-lg bg-background/40 p-4">
+              <div class="relative w-full h-[300px]">
+                <div bind:this={chartEl} class="w-full h-full"></div>
+
+                {#if !hasChartData}
+                  <div
+                    class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
+                  >
+                    No data in this range
+                  </div>
+                {/if}
+              </div>
             </div>
           </div>
         </div>
