@@ -10,9 +10,10 @@
     AreaSeriesPartialOptions,
     Time,
   } from "lightweight-charts";
-
   import { onMount, onDestroy } from "svelte";
   import { PUBLIC_API_BASE } from "$env/static/public";
+  import { browser } from "$app/environment";
+  import { enhance } from "$app/forms";
 
   let { data } = $props<{
     data: PageData & {
@@ -25,6 +26,7 @@
   let outcomes = $state(data.outcomes ?? []);
   let priceHistory = $state(data.priceHistory);
   let selectedRange = $state<"1H" | "1D" | "1W" | "1M" | "ALL">("ALL");
+  let isSubmitting = $state(false);
 
   const isAuthed = data.isAuthed ?? false;
 
@@ -256,15 +258,8 @@
 
       const updatedOutcomes = updated.outcomes ?? [];
 
-      // Prevent unnecessary updates
-      const hasChanged =
-        JSON.stringify(market) !== JSON.stringify(updatedMarket) ||
-        JSON.stringify(outcomes) !== JSON.stringify(updatedOutcomes);
-
-      if (hasChanged) {
-        market = updatedMarket;
-        outcomes = updatedOutcomes;
-      }
+      market = updatedMarket;
+      outcomes = updatedOutcomes;
     } catch (err) {
       console.error("Market polling failed:", err);
     }
@@ -282,8 +277,13 @@
 
       if (!updated) return;
 
-      priceHistory = updated;
-      updateChart();
+      if (JSON.stringify(priceHistory) !== JSON.stringify(updated)) {
+        priceHistory = updated;
+
+        if (series && chart) {
+          updateChart();
+        }
+      }
     } catch (err) {
       console.error("Price history polling failed:", err);
     }
@@ -298,8 +298,12 @@
       fetchPriceHistory();
     }, 3000);
   });
+
   onDestroy(() => {
     if (pollingInterval) clearInterval(pollingInterval);
+    if (browser) {
+      window.removeEventListener("resize", resizeChart);
+    }
   });
 
   const projectedEndDate = $derived(
@@ -324,7 +328,25 @@
 
   let chartEl = $state<HTMLDivElement | null>(null);
   let chart: IChartApi | null = null;
+  let hasFitContent = false;
   let series: ISeriesApi<"Area"> | null = null;
+  let resizeTimeout: ReturnType<typeof setTimeout>;
+
+  const resizeChart = () => {
+    if (!chartEl || !chart) return;
+
+    const el = chartEl;
+    const c = chart;
+
+    clearTimeout(resizeTimeout);
+
+    resizeTimeout = setTimeout(() => {
+      c.applyOptions({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      });
+    }, 100);
+  };
 
   const yesHistory = $derived(
     priceHistory?.outcomes?.find((o: any) =>
@@ -395,7 +417,10 @@
 
     series.setData(data);
 
-    chart.timeScale().fitContent();
+    if (!hasFitContent) {
+      chart.timeScale().fitContent();
+      hasFitContent = true;
+    }
   }
 
   onMount(async () => {
@@ -455,7 +480,7 @@
       },
       rightPriceScale: {
         borderVisible: false,
-        scaleMargins: { top: 0.15, bottom: 0.15 },
+        scaleMargins: { top: 0.15, bottom: 0.25 },
       },
       crosshair: { mode: 1 },
       handleScroll: {
@@ -482,6 +507,10 @@
     });
     updateChart();
     chart.timeScale().fitContent();
+    resizeChart();
+    if (browser) {
+      window.addEventListener("resize", resizeChart);
+    }
   });
 
   const isTradable = $derived((market.status ?? "").toLowerCase() === "open");
@@ -617,8 +646,8 @@
                 </button>
               {/each}
             </div>
-            <div class="h-full rounded-lg bg-background/40 p-4">
-              <div class="relative w-full h-[300px]">
+            <div class="h-full rounded-lg bg-background/40 p-2 md:p-3">
+              <div class="relative w-full h-[260px] overflow-hidden">
                 <div bind:this={chartEl} class="w-full h-full"></div>
 
                 {#if !hasChartData}
@@ -663,6 +692,15 @@
           method="POST"
           action="?/buy"
           class="rounded-xl border border-border bg-card overflow-hidden"
+          use:enhance={() => {
+            isSubmitting = true;
+
+            return async ({ result }: { result: any }) => {
+              isSubmitting = false;
+              await fetchMarket();
+              await fetchPriceHistory();
+            };
+          }}
         >
           <div
             class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
@@ -812,13 +850,18 @@
               <!-- Submit -->
               <button
                 type="submit"
-                class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                 disabled={!isTradable ||
                   !selectedOutcome ||
                   !shares ||
-                  pricePerShare <= 0}
+                  pricePerShare <= 0 ||
+                  isSubmitting}
               >
-                Place order · {formatKES(totalKES)}
+                {#if isSubmitting}
+                  <span class="animate-pulse">Placing...</span>
+                {:else}
+                  <span>Place order · {formatKES(totalKES)}</span>
+                {/if}
               </button>
             {:else}
               <div class="text-xs text-muted-foreground">No outcomes yet.</div>
