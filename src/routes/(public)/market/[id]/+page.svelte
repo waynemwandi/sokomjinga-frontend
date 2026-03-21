@@ -4,12 +4,7 @@
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
   import type { PageData } from "./$types";
   import { goto } from "$app/navigation";
-  import type {
-    IChartApi,
-    ISeriesApi,
-    AreaSeriesPartialOptions,
-    Time,
-  } from "lightweight-charts";
+  import type { IChartApi, ISeriesApi, Time } from "lightweight-charts";
   import { onMount, onDestroy } from "svelte";
   import { PUBLIC_API_BASE } from "$env/static/public";
   import { browser } from "$app/environment";
@@ -108,13 +103,13 @@
   };
 
   const formatKES = (v: number) =>
-    `KES ${new Intl.NumberFormat("en-KE").format(v)}`;
+    `KES ${Math.round(v).toLocaleString("en-KE")}`;
 
   // detect YES/NO to style buttons with .btn-yes / .btn-no from app.css
   const isYes = (o: any) => /^(yes|true)$/i.test(o?.name ?? o?.label ?? "");
   const isNo = (o: any) => /^(no|false)$/i.test(o?.name ?? o?.label ?? "");
 
-  // --- Buy panel state (selected side + shares) -----------------------
+  // --- Buy panel state (selected side) -----------------------
   type Outcome = {
     id: string;
     label?: string;
@@ -122,6 +117,7 @@
     price_cents?: number;
     price?: number;
     price_kes?: number;
+    total_stake_cents?: number;
   };
 
   const yesOutcome = $derived(outcomes.find((o: Outcome) => isYes(o)));
@@ -144,7 +140,7 @@
 
   let selectedOutcome = $state<Outcome | null>(null);
 
-  let shares = $state(1);
+  let amountKES = $state<number | "">("");
 
   $effect(() => {
     if (!selectedOutcome && outcomes.length) {
@@ -170,18 +166,36 @@
     }
   };
 
-  const incShares = () => {
-    shares = shares + 1;
-  };
-
-  const decShares = () => {
-    if (shares > 1) shares = shares - 1;
-  };
-
   const pricePerShare = $derived(
     selectedOutcome ? priceOf(selectedOutcome) : 0,
   );
-  const totalKES = $derived(shares * pricePerShare);
+  const totalKES = $derived(Number(amountKES || 0));
+  const potentialPayoutKES = $derived.by(() => {
+    const amt = Number(amountKES || 0);
+    if (!selectedOutcome || amt <= 0) return 0;
+
+    const stakeKES = amt;
+    const stakeCents = Math.round(stakeKES * 100);
+
+    const currentWinningPool = selectedPool;
+    const currentLosingPool = oppositePool;
+
+    const newWinningPool = currentWinningPool + stakeCents;
+    const newTotalPool = currentWinningPool + currentLosingPool + stakeCents;
+
+    if (newWinningPool <= 0 || newTotalPool <= 0) return 0;
+
+    const feeRate = (market.fee_rate_bps ?? 500) / 10000;
+    const fee = newTotalPool * feeRate;
+    const distributable = newTotalPool - fee;
+
+    const payoutCents = (stakeCents * distributable) / newWinningPool;
+
+    return payoutCents / 100;
+  });
+
+  const profitKES = $derived(potentialPayoutKES - totalKES);
+
   const statusMeta = (m: any) => {
     const s = (m.status ?? "").toLowerCase();
 
@@ -226,6 +240,19 @@
       : typeof market.volume_kes === "number"
         ? market.volume_kes
         : null,
+  );
+
+  const selectedPool = $derived(
+    selectedOutcome ? Number(selectedOutcome.total_stake_cents ?? 0) : 0,
+  );
+
+  const oppositePool = $derived(
+    selectedOutcome
+      ? Number(
+          outcomes.find((o: Outcome) => o.id !== selectedOutcome!.id)
+            ?.total_stake_cents ?? 0,
+        )
+      : 0,
   );
 
   const formatCompactKES = (v: number) => {
@@ -706,18 +733,15 @@
             class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
           >
             <span>Buy</span>
-            {#if selectedOutcome}
-              <span class="text-xs text-muted-foreground">
-                Price per share: <span class="text-primary"
-                  >{formatKES(pricePerShare)}</span
-                >
-              </span>
-            {/if}
           </div>
 
           <!-- hidden fields that go to the buy action -->
           <input type="hidden" name="side" value={selectedSide} />
-          <input type="hidden" name="shares" value={shares} />
+          <input
+            type="hidden"
+            name="amount_cents"
+            value={Math.round(Number(amountKES || 0) * 100)}
+          />
           <!-- pricePerShare is in KES; convert to cents for the backend -->
           <input
             type="hidden"
@@ -771,77 +795,70 @@
                   </button>
                 {/if}
               </div>
-
-              <!-- Shares selector -->
-              <div class="space-y-2">
+              <!-- Amount input -->
+              <div class="space-y-3">
                 <div
-                  class="flex items-center justify-between text-xs text-primary-foreground"
+                  class="flex items-center justify-between text-xs text-muted-foreground"
                 >
-                  <span>Shares</span>
-                  <span>Price / share: {formatKES(pricePerShare)}</span>
+                  <span>Amount</span>
+                  <span>KES</span>
                 </div>
 
-                <div class="flex items-center gap-3">
+                <input
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  placeholder="0"
+                  class="w-full rounded-md bg-input px-3 py-3 text-lg font-semibold outline-none text-right"
+                  bind:value={amountKES}
+                  disabled={!isTradable}
+                  onfocus={() => {
+                    if (Number(amountKES || 0) === 0) amountKES = "";
+                  }}
+                  onblur={() => {
+                    if (amountKES === "") amountKES = 0;
+                  }}
+                  oninput={(e) => {
+                    const v = e.currentTarget.value;
+                    if (v === "") return;
+                    amountKES = Math.max(0, Math.floor(Number(v)));
+                  }}
+                />
+              </div>
+
+              <!-- Quick amounts -->
+              <div class="flex gap-2 pt-1">
+                {#each [50, 100, 500, 1000] as amt}
                   <button
                     type="button"
-                    disabled={!isTradable}
-                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    onclick={() => isTradable && decShares()}
+                    class="rounded-md bg-input px-3 py-1 text-xs"
+                    onclick={() => (amountKES = amt)}
                   >
-                    –
+                    KES {amt}
                   </button>
+                {/each}
+              </div>
 
+              <!-- Big payout display -->
+              {#if Number(amountKES || 0) > 0}
+                <div class="pt-4 border-t border-border/50">
+                  <div class="text-xs text-muted-foreground mb-1 text-right">
+                    To win
+                  </div>
                   <div
-                    class="flex-1 text-center rounded-md bg-input py-2 text-sm font-medium"
+                    class="text-3xl md:text-4xl font-semibold text-emerald-400 text-right w-full"
                   >
-                    {shares}
+                    {formatKES(potentialPayoutKES)}
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={!isTradable}
-                    class="h-9 w-9 flex items-center justify-center rounded-md border border-border bg-card hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                    onclick={() => isTradable && incShares()}
+                  <div
+                    class="text-[11px] text-muted-foreground text-right mt-1"
                   >
-                    +
-                  </button>
+                    Based on current market conditions
+                  </div>
                 </div>
-              </div>
-
-              <!-- Quick share presets -->
-              <div class="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  class="rounded-md bg-input px-2 py-1 text-xs"
-                  onclick={() => (shares = shares + 1)}
-                >
-                  +1
-                </button>
-                <button
-                  type="button"
-                  class="rounded-md bg-input px-2 py-1 text-xs"
-                  onclick={() => (shares = shares + 5)}
-                >
-                  +5
-                </button>
-                <button
-                  type="button"
-                  class="rounded-md bg-input px-2 py-1 text-xs"
-                  onclick={() => (shares = shares + 10)}
-                >
-                  +10
-                </button>
-              </div>
-
-              <!-- Total cost -->
-              <div
-                class="flex items-center justify-between pt-3 text-xs text-muted-foreground"
-              >
-                <span>Estimated cost</span>
-                <span class="text-sm font-semibold text-foreground">
-                  {formatKES(totalKES)}
-                </span>
-              </div>
+              {/if}
               {#if !isTradable}
                 <div class="text-xs text-amber-400">
                   This market is no longer open for trading.
@@ -853,14 +870,14 @@
                 class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
                 disabled={!isTradable ||
                   !selectedOutcome ||
-                  !shares ||
+                  Number(amountKES || 0) <= 0 ||
                   pricePerShare <= 0 ||
                   isSubmitting}
               >
                 {#if isSubmitting}
                   <span class="animate-pulse">Placing...</span>
                 {:else}
-                  <span>Place order · {formatKES(totalKES)}</span>
+                  <span>Place order · {formatKES(Number(amountKES || 0))}</span>
                 {/if}
               </button>
             {:else}
