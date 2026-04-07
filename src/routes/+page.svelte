@@ -193,6 +193,56 @@
     })(),
   );
 
+  function closesInLabel(m: any): string | null {
+    const date = m.close_at ?? m.projected_end_date;
+    if (!date) return null;
+
+    // only for open markets
+    if ((m.status ?? "").toLowerCase() !== "open") return null;
+
+    const closeTime = new Date(date).getTime();
+    const now = Date.now();
+    const diff = closeTime - now;
+
+    // hide past
+    if (diff <= 0) return null;
+
+    // only show within 24h
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+    if (diff > ONE_DAY) return null;
+
+    const totalMinutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) return `Closes in ${minutes}m`;
+
+    return `Closes in ${hours}h ${minutes}m`;
+  }
+
+  function isClosingSoon(m: any): boolean {
+    const date = m.close_at ?? m.projected_end_date;
+    if (!date) return false;
+
+    if ((m.status ?? "").toLowerCase() !== "open") return false;
+
+    const diff = new Date(date).getTime() - Date.now();
+
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+
+    return diff > 0 && diff <= ONE_DAY;
+  }
+
+  let now = $state(Date.now());
+
+  onMount(() => {
+    const interval = setInterval(() => {
+      now = Date.now();
+    }, 60000); // update every minute (lightweight)
+
+    return () => clearInterval(interval);
+  });
+
   $effect(() => {
     searchResults.set(filteredMarkets);
   });
@@ -290,9 +340,13 @@
     >
       {#each visibleMarkets as m (m.id)}
         <article
-          class="group rounded-xl border border-border/70 bg-card/80 shadow-sm
-        hover:border-primary/40 transition-all duration-200
-        hover:-translate-y-1 hover:shadow-lg"
+          class={`group rounded-xl border bg-card/80 shadow-sm
+            transition-all duration-200 hover:-translate-y-1 hover:shadow-lg
+            ${
+              isClosingSoon(m)
+                ? "border-amber-400/60 ring-amber-400/30"
+                : "border-border/70 hover:border-primary/40"
+            }`}
         >
           <a href={`/market/${encodeURIComponent(m.id)}`} class="block">
             <!-- HEADER -->
@@ -415,15 +469,24 @@
 
             <!-- FOOTER -->
             <div
-              class="px-4 lg:px-5 pb-4 pt-3 flex items-center text-xs text-muted-foreground"
+              class="px-4 lg:px-5 pb-4 pt-3 flex flex-col text-xs text-muted-foreground"
             >
-              <span class="flex-1 font-medium text-foreground/80">
-                {volLabel(m)}
-              </span>
-              <div class="flex items-center gap-2 opacity-70">
-                <Gift class="h-4 w-4" />
-                <Bookmark class="h-4 w-4" />
+              <div class="flex items-center">
+                <span class="flex-1 font-medium text-foreground/80">
+                  {volLabel(m)}
+                </span>
+
+                <div class="flex items-center gap-2 opacity-70">
+                  <Gift class="h-4 w-4" />
+                  <Bookmark class="h-4 w-4" />
+                </div>
               </div>
+
+              {#if closesInLabel(m)}
+                <div class="mt-1 text-[11px] text-amber-400">
+                  {closesInLabel(m)}
+                </div>
+              {/if}
             </div>
           </a>
         </article>

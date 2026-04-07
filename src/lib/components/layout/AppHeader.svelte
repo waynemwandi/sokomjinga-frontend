@@ -1,13 +1,11 @@
 <!-- src/lib/components/layout/AppHeader.svelte -->
 
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { toggleTheme } from "$lib/theme";
   import {
     ChartNoAxesCombined,
-    Sun,
     Moon,
-    LogIn,
     LogOut,
     Menu,
     UserRound,
@@ -18,11 +16,21 @@
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
   import { searchQuery } from "$lib/stores/search";
-  import { onDestroy } from "svelte";
   import { browser } from "$app/environment";
+  import { portfolio } from "$lib/stores/portfolio";
+
+  export let portfolioLabel: string | null = null;
+
+  $: displayValue =
+    $portfolio > 0
+      ? `KES ${$portfolio.toLocaleString("en-KE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`
+      : (portfolioLabel?.replace("Portfolio ", "") ?? "KES 0.00");
 
   export let isAuthed: boolean;
-  export let portfolioLabel: string = "Portfolio KES 0.00";
+  // export let portfolioLabel: string = "Portfolio KES 0.00";
   export let portfolioHref: string = "/portfolio";
   export let depositHref: string = "/portfolio?deposit=1";
 
@@ -33,10 +41,6 @@
     const stamp = Date.now();
     goto(`/portfolio?deposit=${stamp}`);
   };
-
-  $: portfolioAmount = portfolioLabel
-    ? portfolioLabel.replace("Portfolio ", "")
-    : "KES 0.00";
 
   let showHowItWorks = false;
   let step = 1;
@@ -103,23 +107,6 @@
       />
     </div>
     <div class="ml-auto flex items-center gap-3">
-      <!-- Theme toggle-->
-      <!-- <button
-        class="inline-flex h-9 w-9 items-center justify-center
-             rounded-md border border-border bg-input hover:bg-card transition"
-        onclick={toggleTheme}
-        aria-label="Toggle theme"
-      >
-        <Sun
-          class="h-4 w-4 rotate-0 scale-100 transition-all
-               dark:-rotate-90 dark:scale-0"
-        />
-        <Moon
-          class="absolute h-4 w-4 rotate-90 scale-0 transition-all
-               dark:rotate-0 dark:scale-100"
-        />
-      </button> -->
-
       {#if isAuthed}
         <!-- Portfolio (DESKTOP) -->
         <a
@@ -128,7 +115,7 @@
         >
           <span class="text-[11px] text-muted-foreground"> Portfolio </span>
           <span class="text-sm font-semibold text-emerald-500">
-            {portfolioAmount}
+            {displayValue}
           </span>
         </a>
 
@@ -137,7 +124,7 @@
           href={portfolioHref}
           class="md:hidden text-sm font-semibold text-emerald-500 px-2 truncate max-w-[140px]"
         >
-          {portfolioAmount}
+          {displayValue}
         </a>
 
         <!-- Deposit (DESKTOP ONLY) -->
@@ -200,7 +187,7 @@
                 target="_blank"
                 rel="noopener noreferrer"
                 class="flex items-center gap-2 rounded-lg px-3 py-2
-         hover:bg-accent hover:text-accent-foreground"
+                  hover:bg-accent hover:text-accent-foreground"
                 onclick={() => (openMenu = false)}
               >
                 <CirclePlus class="h-4 w-4" />

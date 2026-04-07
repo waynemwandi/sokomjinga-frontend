@@ -9,6 +9,7 @@
   import { PUBLIC_API_BASE } from "$env/static/public";
   import { browser } from "$app/environment";
   import { enhance } from "$app/forms";
+  import { portfolio } from "$lib/stores/portfolio";
 
   let { data } = $props<{
     data: PageData & {
@@ -22,64 +23,13 @@
   let priceHistory = $state(data.priceHistory);
   let selectedRange = $state<"1H" | "1D" | "1W" | "1M" | "ALL">("ALL");
   let isSubmitting = $state(false);
+  let showMobileBuy = $state(false);
 
   const isAuthed = data.isAuthed ?? false;
 
-  const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
+  // const portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
 
   type Point = { x: number; y: number };
-
-  // build a single line series (Yes) from history
-  const chartSeries = (() => {
-    if (!priceHistory?.outcomes?.length) return [];
-
-    const yes = priceHistory.outcomes.find((o: any) =>
-      /^(yes|true)$/i.test(o.label ?? ""),
-    );
-    if (!yes || !yes.points?.length) return [];
-
-    const pts = yes.points as { price_cents: number }[];
-
-    if (pts.length === 1) {
-      return [
-        {
-          outcome_id: yes.outcome_id,
-          points: [{ x: 50, y: 20 }], // center single point
-          areaPath: "",
-        },
-      ];
-    }
-
-    const minPrice = 0;
-    const maxPrice = 100;
-    const range = maxPrice - minPrice || 1;
-    const n = pts.length;
-
-    const mapped: Point[] = pts.map((p, i) => {
-      const t = n === 1 ? 0 : i / (n - 1);
-      const x = 5 + t * 90; // padding
-      const norm = (p.price_cents - minPrice) / range;
-      const y = 35 - norm * 25; // invert for SVG coords
-      return { x, y };
-    });
-
-    const first = mapped[0];
-    const last = mapped[mapped.length - 1];
-    const areaPath = [
-      `M ${first.x} 35`,
-      ...mapped.map((p) => `L ${p.x} ${p.y}`),
-      `L ${last.x} 35`,
-      "Z",
-    ].join(" ");
-
-    return [
-      {
-        outcome_id: yes.outcome_id,
-        points: mapped,
-        areaPath,
-      },
-    ];
-  })();
 
   // same categories as homepage
   const categories = [
@@ -265,54 +215,46 @@
   let pollingInterval: ReturnType<typeof setInterval>;
 
   const fetchMarket = async () => {
-    try {
-      const res = await fetch(`${PUBLIC_API_BASE}/markets/${market.id}`, {
-        headers: { accept: "application/json" },
-      });
+    const res = await fetch(`${PUBLIC_API_BASE}/markets/${market.id}`, {
+      headers: { accept: "application/json" },
+    });
 
-      if (!res.ok) return;
+    if (!res.ok) return;
 
-      const updated = await res.json();
+    const updated = await res.json();
 
-      if (!updated) return;
+    if (!updated) return;
 
-      // Normalize (same philosophy as homepage)
-      const updatedMarket = {
-        ...updated,
-        image_url: updated.image_url ?? updated.img ?? null,
-        volume_cents: updated.volume_cents ?? 0,
-      };
+    // Normalize (same philosophy as homepage)
+    const updatedMarket = {
+      ...updated,
+      image_url: updated.image_url ?? updated.img ?? null,
+      volume_cents: updated.volume_cents ?? 0,
+    };
 
-      const updatedOutcomes = updated.outcomes ?? [];
+    const updatedOutcomes = updated.outcomes ?? [];
 
-      market = updatedMarket;
-      outcomes = updatedOutcomes;
-    } catch (err) {
-      console.error("Market polling failed:", err);
-    }
+    market = updatedMarket;
+    outcomes = updatedOutcomes;
   };
 
   const fetchPriceHistory = async () => {
-    try {
-      const res = await fetch(
-        `${PUBLIC_API_BASE}/markets/${market.id}/price-history`,
-      );
+    const res = await fetch(
+      `${PUBLIC_API_BASE}/markets/${market.id}/price-history`,
+    );
 
-      if (!res.ok) return;
+    if (!res.ok) return;
 
-      const updated = await res.json();
+    const updated = await res.json();
 
-      if (!updated) return;
+    if (!updated) return;
 
-      if (JSON.stringify(priceHistory) !== JSON.stringify(updated)) {
-        priceHistory = updated;
+    if (JSON.stringify(priceHistory) !== JSON.stringify(updated)) {
+      priceHistory = updated;
 
-        if (series && chart) {
-          updateChart();
-        }
+      if (series && chart) {
+        updateChart();
       }
-    } catch (err) {
-      console.error("Price history polling failed:", err);
     }
   };
 
@@ -408,7 +350,6 @@
 
     const filtered = points.filter((p) => new Date(p.t).getTime() >= cutoff);
 
-    // fallback: if filter kills everything, show last few points
     return filtered;
   };
 
@@ -531,6 +472,11 @@
       lineColor: "#2dd4bf",
       topColor: "rgba(45,212,191,0.35)",
       bottomColor: "rgba(45,212,191,0.02)",
+
+      priceFormat: {
+        type: "custom",
+        formatter: (price: number) => `${Math.round(price)}%`,
+      },
     });
     updateChart();
     chart.timeScale().fitContent();
@@ -557,8 +503,7 @@
 <!-- ===========================
     Header (shared with homepage)
   =========================== -->
-<AppHeader {isAuthed} {portfolioLabel} />
-
+<AppHeader {isAuthed} />
 <!-- primary nav row (same as homepage) -->
 <div class="border-t border-border/60">
   <div
@@ -714,7 +659,7 @@
       </section>
 
       <!-- right: Buy panel -->
-      <aside class="md:col-span-1">
+      <aside class="hidden md:block md:col-span-1">
         <form
           method="POST"
           action="?/buy"
@@ -724,6 +669,15 @@
 
             return async ({ result }: { result: any }) => {
               isSubmitting = false;
+
+              if (result?.type === "success") {
+                const balanceCents = result.data?.wallet_balance_cents;
+
+                if (typeof balanceCents === "number") {
+                  portfolio.set(balanceCents / 100);
+                }
+              }
+
               await fetchMarket();
               await fetchPriceHistory();
             };
@@ -741,12 +695,6 @@
             type="hidden"
             name="amount_cents"
             value={Math.round(Number(amountKES || 0) * 100)}
-          />
-          <!-- pricePerShare is in KES; convert to cents for the backend -->
-          <input
-            type="hidden"
-            name="price_cents"
-            value={Math.round(pricePerShare * 100)}
           />
 
           <div class="p-4 space-y-5">
@@ -820,9 +768,17 @@
                     if (amountKES === "") amountKES = 0;
                   }}
                   oninput={(e) => {
-                    const v = e.currentTarget.value;
-                    if (v === "") return;
-                    amountKES = Math.max(0, Math.floor(Number(v)));
+                    const raw = e.currentTarget.value;
+
+                    // keep only digits
+                    const digits = raw.replace(/\D/g, "");
+
+                    if (digits === "") {
+                      amountKES = "";
+                      return;
+                    }
+
+                    amountKES = Math.max(0, Number(digits));
                   }}
                 />
               </div>
@@ -867,17 +823,20 @@
               <!-- Submit -->
               <button
                 type="submit"
-                class="mt-3 w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-                disabled={!isTradable ||
-                  !selectedOutcome ||
-                  Number(amountKES || 0) <= 0 ||
-                  pricePerShare <= 0 ||
-                  isSubmitting}
+                class="w-full rounded-md bg-primary py-3 text-sm font-medium text-primary-foreground
+                  disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+                  flex items-center justify-center gap-2"
+                disabled={Number(amountKES || 0) <= 0 || isSubmitting}
               >
                 {#if isSubmitting}
-                  <span class="animate-pulse">Placing...</span>
+                  <span class="flex items-center gap-2">
+                    <span
+                      class="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"
+                    ></span>
+                    Placing...
+                  </span>
                 {:else}
-                  <span>Place order · {formatKES(Number(amountKES || 0))}</span>
+                  Place order · {formatKES(Number(amountKES || 0))}
                 {/if}
               </button>
             {:else}
@@ -888,4 +847,189 @@
       </aside>
     </div>
   </div>
+  <!-- MOBILE BUY BAR (fixed above bottom nav) -->
+  {#if outcomes.length}
+    <div
+      class="fixed bottom-16 left-0 right-0 z-40 md:hidden
+    border-t border-border bg-background/95 backdrop-blur px-4 py-3"
+    >
+      <div class="flex gap-2">
+        <!-- YES -->
+        {#if yesOutcome}
+          <button
+            class="flex-1 rounded-md py-3 text-sm font-semibold
+          {selectedOutcome === yesOutcome
+              ? 'bg-emerald-600 text-white'
+              : 'bg-emerald-500/20 text-emerald-400'}"
+            onclick={() => {
+              selectOutcome(yesOutcome);
+              showMobileBuy = true;
+            }}
+          >
+            Yes · {Math.round(priceOf(yesOutcome))}%
+          </button>
+        {/if}
+
+        <!-- NO -->
+        {#if noOutcome}
+          <button
+            class="flex-1 rounded-md py-3 text-sm font-semibold
+          {selectedOutcome === noOutcome
+              ? 'bg-red-600 text-white'
+              : 'bg-red-500/20 text-red-400'}"
+            onclick={() => {
+              selectOutcome(noOutcome);
+              showMobileBuy = true;
+            }}
+          >
+            No · {Math.round(priceOf(noOutcome))}%
+          </button>
+        {/if}
+      </div>
+    </div>
+  {/if}
 </main>
+{#if showMobileBuy}
+  <div class="fixed inset-0 z-50 md:hidden">
+    <!-- backdrop -->
+    <button
+      type="button"
+      aria-label="Close buy panel"
+      class="absolute inset-0 bg-black/50 cursor-default"
+      onclick={() => (showMobileBuy = false)}
+    ></button>
+
+    <!-- drawer -->
+    <div
+      class="absolute bottom-0 left-0 right-0
+      bg-background border-t border-border rounded-t-2xl
+      p-4 space-y-4 animate-slide-up"
+    >
+      <!-- header -->
+      <div class="flex items-center justify-between">
+        <div class="text-sm font-medium">Buy</div>
+        <button
+          class="text-xs text-muted-foreground"
+          onclick={() => (showMobileBuy = false)}
+        >
+          Close
+        </button>
+      </div>
+
+      <!-- selected outcome -->
+      {#if selectedOutcome}
+        <div class="text-xs text-muted-foreground">
+          {market.title}
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-muted-foreground">You are buying</div>
+
+          <div
+            class={`px-3 py-1 rounded-full text-xs font-semibold
+      ${
+        selectedSide === "yes"
+          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "bg-red-500/20 text-red-400 border border-red-500/30"
+      }`}
+          >
+            {selectedSide === "yes" ? "YES" : "NO"}
+          </div>
+        </div>
+
+        <div class="text-sm font-medium text-muted-foreground">
+          Based on current market odds
+        </div>
+      {/if}
+
+      <!-- amount input -->
+      <input
+        type="text"
+        inputmode="numeric"
+        placeholder="0"
+        class="w-full text-center text-3xl font-semibold bg-transparent outline-none"
+        bind:value={amountKES}
+        onfocus={() => {
+          if (Number(amountKES || 0) === 0) amountKES = "";
+        }}
+        onblur={() => {
+          if (amountKES === "") amountKES = 0;
+        }}
+        oninput={(e) => {
+          const digits = e.currentTarget.value.replace(/\D/g, "");
+          amountKES = digits === "" ? "" : Number(digits);
+        }}
+      />
+
+      <!-- payout -->
+      {#if Number(amountKES || 0) > 0}
+        <div class="text-center">
+          <div class="text-xs text-muted-foreground mb-1 text-right">
+            Estimated payout
+          </div>
+          <div class="text-2xl font-semibold text-emerald-400">
+            {formatKES(potentialPayoutKES)}
+          </div>
+        </div>
+      {/if}
+
+      <!-- quick amounts -->
+      <div class="flex gap-2 justify-center">
+        {#each [50, 100, 500, 1000] as amt}
+          <button
+            class="bg-input px-3 py-1 rounded text-xs"
+            onclick={() => (amountKES = amt)}
+          >
+            KES {amt}
+          </button>
+        {/each}
+      </div>
+
+      <!-- submit -->
+      <form
+        method="POST"
+        action="?/buy"
+        use:enhance={() => {
+          isSubmitting = true;
+
+          return async ({ result }: { result: any }) => {
+            isSubmitting = false;
+            showMobileBuy = false;
+
+            if (result?.type === "success") {
+              const balanceCents = result.data?.wallet_balance_cents;
+
+              if (typeof balanceCents === "number") {
+                portfolio.set(balanceCents / 100);
+              }
+            }
+
+            await fetchMarket();
+            await fetchPriceHistory();
+          };
+        }}
+      >
+        <input type="hidden" name="side" value={selectedSide} />
+        <input
+          type="hidden"
+          name="amount_cents"
+          value={Math.round(Number(amountKES || 0) * 100)}
+        />
+        <input
+          type="hidden"
+          name="price_cents"
+          value={Math.round(pricePerShare * 100)}
+        />
+
+        <button
+          type="submit"
+          class="w-full rounded-md bg-primary py-3 text-sm font-medium text-primary-foreground"
+          disabled={Number(amountKES || 0) <= 0 || isSubmitting}
+        >
+          {isSubmitting
+            ? "Placing..."
+            : `Place order · ${formatKES(Number(amountKES || 0))}`}
+        </button>
+      </form>
+    </div>
+  </div>
+{/if}

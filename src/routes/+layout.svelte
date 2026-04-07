@@ -7,6 +7,7 @@
 
   import { searchQuery } from "$lib/stores/search";
   import { searchResults } from "$lib/stores/search";
+  import { portfolio } from "$lib/stores/portfolio";
 
   let title = "MaoniMarket | Kenya's Largest Prediction Market";
   let { children, data } = $props();
@@ -22,6 +23,22 @@
 
     showMobileSearch = false;
     mobileQuery = "";
+  });
+  $effect(() => {
+    const raw = data?.portfolioLabel;
+    if (!raw) return;
+
+    const cleaned = String(raw)
+      .replace("Portfolio ", "")
+      .replace(/KES\s?/i, "")
+      .replace(/,/g, "")
+      .trim();
+
+    const value = Number(cleaned);
+
+    if (!Number.isNaN(value) && $portfolio === 0) {
+      portfolio.set(value);
+    }
   });
 
   // let mobileSearchInput = $state<HTMLInputElement | null>(null);
@@ -54,9 +71,7 @@
   <link rel="canonical" href="https://maonimarket.com" />
 </svelte:head>
 
-<div class="pb-28 md:pb-0">
-  {@render children?.()}
-</div>
+<div class="pb-36 md:pb-0">{@render children?.()}</div>
 
 {#if showMobileSearch}
   <div

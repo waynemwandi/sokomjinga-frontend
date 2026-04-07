@@ -42,14 +42,11 @@ export const actions: Actions = {
 
     const fd = await request.formData();
     const side = String(fd.get("side") ?? "yes"); // "yes" | "no"
-    const shares = Number(fd.get("shares") ?? "1");
-    const priceCents = Number(fd.get("price_cents") ?? "0");
+    const amountCents = Number(fd.get("amount_cents") ?? "0");
 
-    if (!shares || shares <= 0 || !priceCents || priceCents <= 0) {
-      throw error(400, "Invalid order details");
+    if (!amountCents || amountCents <= 0) {
+      throw error(400, "Invalid amount");
     }
-
-    const amountCents = shares * priceCents;
 
     // 1) check wallet balance
     const wallet = await Wallet.me({
@@ -103,7 +100,18 @@ export const actions: Actions = {
       },
     );
 
-    // back to same market page; SvelteKit will re-run load
-    return { success: true };
+    // 4) fetch updated wallet AFTER bet
+    const updatedWallet = await Wallet.me({
+      headers: {
+        Authorization: `Bearer ${locals.accessToken}`,
+        accept: "application/json",
+      },
+    });
+
+    // return new balance to frontend
+    return {
+      success: true,
+      wallet_balance_cents: updatedWallet.balance_cents ?? 0,
+    };
   },
 };
