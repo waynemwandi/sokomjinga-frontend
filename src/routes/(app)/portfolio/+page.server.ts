@@ -3,7 +3,7 @@ import type { PageServerLoad, Actions } from "./$types";
 import { env as priv } from "$env/dynamic/private";
 import { env as pub } from "$env/dynamic/public";
 import { redirect, error, fail } from "@sveltejs/kit";
-import { Wallet } from "$lib/api.server";
+import { Me, Wallet } from "$lib/api.server";
 
 // Same base resolution pattern as elsewhere
 const BASE = (
@@ -20,27 +20,16 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
     throw redirect(302, `/login?redirect=${redirectTo}`);
   }
 
-  const PAGE_SIZE = 10;
-  const page = Number(url.searchParams.get("page") ?? "0");
-  const offset = page * PAGE_SIZE;
-
   const headers = {
     Authorization: `Bearer ${token}`,
     accept: "application/json",
   };
 
-  const [walletRes, statementRes, positionsRes] = await Promise.all([
+  const [stats, bets, walletRes] = await Promise.all([
+    Me.stats({ headers }),
+    Me.bets({ headers }),
     fetch(`${BASE}/wallet/me`, { headers }),
-    fetch(`${BASE}/wallet/statement?limit=${PAGE_SIZE}&offset=${offset}`, {
-      headers,
-    }),
-    fetch(`${BASE}/me/positions`, { headers }),
   ]);
-
-  if (walletRes.status === 401) {
-    const redirectTo = encodeURIComponent(url.pathname + url.search);
-    throw redirect(302, `/login?redirect=${redirectTo}`);
-  }
 
   if (!walletRes.ok) {
     throw error(
@@ -50,24 +39,13 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   }
 
   const wallet = await walletRes.json();
-
-  const statement = statementRes.ok
-    ? await statementRes.json().catch(() => ({ items: [], total: 0 }))
-    : { items: [], total: 0 };
-
-  const positions = positionsRes.ok
-    ? await positionsRes.json().catch(() => null)
-    : null;
-
   const openDeposit = url.searchParams.get("deposit");
 
   return {
+    stats,
+    bets,
     wallet,
-    statement,
-    positions,
     openDeposit,
-    page,
-    pageSize: PAGE_SIZE,
   };
 };
 

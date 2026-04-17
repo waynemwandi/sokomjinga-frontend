@@ -2,9 +2,17 @@
 import type { PageServerLoad } from "./$types";
 import { redirect, error } from "@sveltejs/kit";
 import { Auth, Me, getJSON } from "$lib/api.server";
+import { env as priv } from "$env/dynamic/private";
+import { env as pub } from "$env/dynamic/public";
 import type { Actions } from "./$types";
 
-export const load: PageServerLoad = async ({ locals, url }) => {
+const BASE = (
+  priv.PRIVATE_API_BASE ||
+  pub.PUBLIC_API_BASE ||
+  "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+
+export const load: PageServerLoad = async ({ locals, url, fetch }) => {
   const token = locals.accessToken;
 
   // must be logged in
@@ -18,22 +26,35 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     accept: "application/json",
   };
 
+  const PAGE_SIZE = 10;
+  const page = Number(url.searchParams.get("page") ?? "0");
+  const offset = page * PAGE_SIZE;
+
   try {
     // Fetch everything in parallel via helpers
-    const [user, stats, bets, positions, profile] = await Promise.all([
+    const [user, positions, profile, statementRes] = await Promise.all([
       Auth.me({ headers }),
-      Me.stats({ headers }),
-      Me.bets({ headers }),
       Me.positions({ headers }),
       getJSON("/profile/me", { headers }),
+      fetch(`${BASE}/wallet/statement?limit=${PAGE_SIZE}&offset=${offset}`, {
+        headers,
+      }),
     ]);
+
+    const statement = statementRes.ok
+      ? await statementRes.json().catch(() => ({ items: [], total: 0 }))
+      : { items: [], total: 0 };
+
+    const openDeposit = url.searchParams.get("deposit");
 
     return {
       user,
-      stats,
-      bets,
       positions,
       profile,
+      statement,
+      openDeposit,
+      page,
+      pageSize: PAGE_SIZE,
     };
   } catch (e: any) {
     // If auth fails specifically, redirect
