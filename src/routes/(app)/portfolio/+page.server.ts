@@ -25,9 +25,10 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
     accept: "application/json",
   };
 
-  const [stats, bets, walletRes] = await Promise.all([
+  const [stats, bets, positions, walletRes] = await Promise.all([
     Me.stats({ headers }),
     Me.bets({ headers }),
+    Me.positions({ headers }),
     fetch(`${BASE}/wallet/me`, { headers }),
   ]);
 
@@ -44,6 +45,7 @@ export const load: PageServerLoad = async ({ locals, fetch, url }) => {
   return {
     stats,
     bets,
+    positions,
     wallet,
     openDeposit,
   };
