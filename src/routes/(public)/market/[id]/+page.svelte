@@ -145,6 +145,22 @@
   });
 
   const profitKES = $derived(potentialPayoutKES - totalKES);
+  const selectedPricePercent = $derived(
+    selectedOutcome ? Math.round(priceOf(selectedOutcome)) : 0,
+  );
+  const selectedSideLabel = $derived(selectedSide === "yes" ? "YES" : "NO");
+  const profitToneClass = $derived(
+    profitKES > 0
+      ? "text-emerald-500 dark:text-emerald-400"
+      : profitKES < 0
+        ? "text-red-500 dark:text-red-400"
+        : "text-muted-foreground",
+  );
+  const selectedSideToneClass = $derived(
+    selectedSide === "yes"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-red-600 dark:text-red-400",
+  );
 
   const statusMeta = (m: any) => {
     const s = (m.status ?? "").toLowerCase();
@@ -687,6 +703,11 @@
             class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
           >
             <span>Buy</span>
+            {#if selectedOutcome}
+              <span class={`text-xs font-semibold ${selectedSideToneClass}`}>
+                {selectedSideLabel} {selectedPricePercent}%
+              </span>
+            {/if}
           </div>
 
           <!-- hidden fields that go to the buy action -->
@@ -717,7 +738,7 @@
                   >
                     <span>Yes</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
-                      {formatKES(priceOf(yesOutcome))}
+                      {Math.round(priceOf(yesOutcome))}%
                     </span>
                   </button>
                 {/if}
@@ -738,7 +759,7 @@
                   >
                     <span>No</span>
                     <span class="mt-0.5 text-[11px] opacity-80">
-                      {formatKES(priceOf(noOutcome))}
+                      {Math.round(priceOf(noOutcome))}%
                     </span>
                   </button>
                 {/if}
@@ -798,20 +819,66 @@
 
               <!-- Big payout display -->
               {#if Number(amountKES || 0) > 0}
-                <div class="pt-4 border-t border-border/50">
-                  <div class="text-xs text-muted-foreground mb-1 text-right">
-                    To win
+                <div
+                  class="space-y-3 rounded-lg border border-border/70 bg-background/40 p-3"
+                >
+                  <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p class="text-[11px] text-muted-foreground">
+                        Amount placed
+                      </p>
+                      <p class="mt-1 font-semibold">
+                        {formatKES(totalKES)}
+                      </p>
+                    </div>
+
+                    <div class="text-right">
+                      <p class="text-[11px] text-muted-foreground">
+                        Market price
+                      </p>
+                      <p class="mt-1 font-semibold">
+                        {selectedSideLabel} {selectedPricePercent}%
+                      </p>
+                    </div>
                   </div>
-                  <div
-                    class="text-3xl md:text-4xl font-semibold text-emerald-400 text-right w-full"
-                  >
-                    {formatKES(potentialPayoutKES)}
+
+                  <div class="border-t border-border/60 pt-3">
+                    <div class="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+                      <div>
+                        <p class="text-xs text-muted-foreground">
+                          If {selectedSideLabel} wins
+                        </p>
+                        <p class="mt-1 text-[11px] text-muted-foreground">
+                          Includes your {formatKES(totalKES)} placed
+                        </p>
+                      </div>
+                      <div class="text-right">
+                        <p class="text-[11px] text-muted-foreground">
+                          Could receive
+                        </p>
+                        <p
+                          class="mt-1 text-2xl md:text-3xl font-semibold text-emerald-500 dark:text-emerald-400"
+                        >
+                          {formatKES(potentialPayoutKES)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div class="mt-3 flex items-center justify-between gap-3">
+                      <span class="text-xs text-muted-foreground">
+                        Possible gain
+                      </span>
+                      <span class={`text-sm font-semibold ${profitToneClass}`}>
+                        {profitKES >= 0 ? "+" : "-"}{formatKES(Math.abs(profitKES))}
+                      </span>
+                    </div>
                   </div>
 
                   <div
-                    class="text-[11px] text-muted-foreground text-right mt-1"
+                    class="text-[11px] leading-relaxed text-muted-foreground"
                   >
-                    Based on current market conditions
+                    Estimated using current market pools. Final payout may
+                    change as more predictions are placed.
                   </div>
                 </div>
               {/if}
@@ -937,7 +1004,7 @@
         </div>
 
         <div class="text-sm font-medium text-muted-foreground">
-          Based on current market odds
+          Current market price: {selectedSideLabel} {selectedPricePercent}%
         </div>
       {/if}
 
@@ -962,12 +1029,40 @@
 
       <!-- payout -->
       {#if Number(amountKES || 0) > 0}
-        <div class="text-center">
-          <div class="text-xs text-muted-foreground mb-1 text-right">
-            Estimated payout
+        <div
+          class="space-y-3 rounded-lg border border-border/70 bg-card p-3"
+        >
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-[11px] text-muted-foreground">Amount placed</p>
+              <p class="mt-1 font-semibold">{formatKES(totalKES)}</p>
+            </div>
+
+            <div class="text-right">
+              <p class="text-[11px] text-muted-foreground">Possible gain</p>
+              <p class={`mt-1 font-semibold ${profitToneClass}`}>
+                {profitKES >= 0 ? "+" : "-"}{formatKES(Math.abs(profitKES))}
+              </p>
+            </div>
           </div>
-          <div class="text-2xl font-semibold text-emerald-400">
-            {formatKES(potentialPayoutKES)}
+
+          <div class="border-t border-border/60 pt-3">
+            <div class="flex items-end justify-between gap-4">
+              <div>
+                <p class="text-xs text-muted-foreground">
+                  If {selectedSideLabel} wins
+                </p>
+                <p class="mt-1 text-[11px] text-muted-foreground">
+                  Includes your amount placed
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-[11px] text-muted-foreground">Could receive</p>
+                <p class="mt-1 text-2xl font-semibold text-emerald-500 dark:text-emerald-400">
+                  {formatKES(potentialPayoutKES)}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       {/if}
