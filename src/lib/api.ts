@@ -88,7 +88,10 @@ MARKETS
 ================================= */
 
 export const Markets = {
-  list: () => j<any[]>("/markets"),
+  list: (options?: { includeArchived?: boolean }) =>
+    j<any[]>(
+      `/markets${options?.includeArchived ? "?include_archived=true" : ""}`,
+    ),
   get: (id: string) => j<any>(`/markets/${id}`),
 
   create: (payload: any, accessToken?: string) =>

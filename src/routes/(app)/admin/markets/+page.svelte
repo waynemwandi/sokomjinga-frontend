@@ -22,6 +22,7 @@
     projected_end_date?: string | null;
     created_at?: string;
     updated_at?: string;
+    is_archived?: boolean;
     outcomes?: Outcome[];
     [key: string]: unknown;
   };
@@ -44,6 +45,7 @@
 
   let q = "";
   let onlyOpen = false;
+  let archiveFilter: "visible" | "archived" | "all" = "visible";
 
   async function onClose(m: Market) {
     const ok = confirm(
@@ -55,6 +57,23 @@
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Close failed");
+    }
+  }
+
+  async function onArchive(m: Market) {
+    const nextArchived = !m.is_archived;
+    const action = nextArchived ? "Archive" : "Unarchive";
+    const impact = nextArchived
+      ? "It will be hidden from the public home page, but direct links and portfolio history will still work."
+      : "It will appear on the public home page again.";
+    const ok = confirm(`${action} market "${m.title}"? ${impact}`);
+    if (!ok) return;
+
+    try {
+      await Markets.update(m.id, { is_archived: nextArchived }, accessToken);
+      await invalidateAll();
+    } catch (e: any) {
+      alert(e?.message || `${action} failed`);
     }
   }
 
@@ -102,6 +121,11 @@
 
   $: filtered = markets
     .filter((m) => (onlyOpen ? (m.status ?? "open") === "open" : true))
+    .filter((m) => {
+      if (archiveFilter === "all") return true;
+      if (archiveFilter === "archived") return Boolean(m.is_archived);
+      return !m.is_archived;
+    })
     .filter((m) =>
       q ? m.title?.toLowerCase().includes(q.toLowerCase()) : true,
     );
@@ -256,6 +280,16 @@
       />
       Only open
     </label>
+
+    <select
+      bind:value={archiveFilter}
+      class="rounded-md border border-border bg-input px-3 py-1.5 text-sm"
+      aria-label="Archive filter"
+    >
+      <option value="visible">Visible</option>
+      <option value="archived">Archived</option>
+      <option value="all">All</option>
+    </select>
 
     <!-- Refresh button -->
     <button
@@ -722,6 +756,12 @@
                   >{m.category}</span
                 >
               {/if}
+              {#if m.is_archived}
+                <span
+                  class="ml-1 text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground"
+                  >Archived</span
+                >
+              {/if}
               {#if m.description}
                 <div class="mt-0.5 text-xs text-muted-foreground line-clamp-2">
                   {m.description as string}
@@ -792,6 +832,13 @@
                   on:click={() => onEdit(m)}
                 >
                   Edit
+                </button>
+
+                <button
+                  class="h-8 px-3 text-xs rounded-md border border-border bg-input hover:bg-card transition"
+                  on:click={() => onArchive(m)}
+                >
+                  {m.is_archived ? "Unarchive" : "Archive"}
                 </button>
 
                 {#if (m.status ?? "open") === "open"}

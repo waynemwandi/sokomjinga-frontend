@@ -54,7 +54,11 @@ export const Auth = {
 // Markets API - CRUD and close
 // -----------------
 export const Markets = {
-  list: (init?: RequestInit) => j<any[]>("/markets", init),
+  list: (init?: RequestInit, options?: { includeArchived?: boolean }) =>
+    j<any[]>(
+      `/markets${options?.includeArchived ? "?include_archived=true" : ""}`,
+      init,
+    ),
   get: (id: string, init?: RequestInit) => j<any>(`/markets/${id}`, init),
   create: (payload: any, init?: RequestInit) =>
     j<any>("/markets", {

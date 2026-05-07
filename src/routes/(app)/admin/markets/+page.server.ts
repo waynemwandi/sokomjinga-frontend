@@ -3,7 +3,10 @@ import type { Actions, PageServerLoad } from "./$types";
 import { Markets, Outcomes } from "$lib/api.server"; // <-- server-only client
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const markets = await Markets.list();
+  const markets = await Markets.list(
+    { headers: { Authorization: `Bearer ${locals.accessToken}` } },
+    { includeArchived: true },
+  );
   return {
     markets,
     accessToken: locals.accessToken ?? null,
