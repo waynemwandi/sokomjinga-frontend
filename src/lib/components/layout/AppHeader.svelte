@@ -1,23 +1,16 @@
 <!-- src/lib/components/layout/AppHeader.svelte -->
 
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { toggleTheme } from "$lib/theme";
   import {
     ChartNoAxesCombined,
-    Moon,
-    LogOut,
-    Menu,
-    UserRound,
     Info,
     X,
-    ChevronDown,
-    CirclePlus,
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
   import { searchQuery } from "$lib/stores/search";
-  import { browser } from "$app/environment";
   import { portfolio } from "$lib/stores/portfolio";
+  import AccountMenu from "./AccountMenu.svelte";
+  import HowItWorksModal from "./HowItWorksModal.svelte";
 
   export let portfolioLabel: string | null = null;
 
@@ -34,8 +27,6 @@
   export let portfolioHref: string = "/portfolio";
   export let depositHref: string = "/portfolio?deposit=1";
 
-  let openMenu = false;
-
   const handleDepositClick = (event: MouseEvent) => {
     event.preventDefault();
     const stamp = Date.now();
@@ -43,38 +34,11 @@
   };
 
   let showHowItWorks = false;
-  let step = 1;
-
   let hideHowItWorksBar = false;
-
-  let isDark = false;
-
-  onMount(() => {
-    isDark = document.documentElement.classList.contains("dark");
-  });
-
-  const handleThemeToggle = () => {
-    toggleTheme();
-    isDark = document.documentElement.classList.contains("dark");
-  };
 
   let query = "";
 
   $: searchQuery.set(query);
-
-  $: if (browser) {
-    if (showHowItWorks) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-  }
-
-  onDestroy(() => {
-    if (browser) {
-      document.body.style.overflow = "";
-    }
-  });
 </script>
 
 <header
@@ -138,96 +102,11 @@
         </a>
 
         <!-- Account -->
-        <div class="relative ml-1">
-          <button
-            class="inline-flex items-center justify-center rounded-md
-                 border border-border bg-card p-2"
-            aria-haspopup="menu"
-            aria-expanded={openMenu}
-            onclick={() => (openMenu = !openMenu)}
-          >
-            <Menu class="h-4 w-4" />
-          </button>
-
-          {#if openMenu}
-            <div
-              class="absolute right-0 mt-2 w-56 rounded-xl
-                border border-border bg-popover shadow-lg p-1 text-sm"
-              onfocusout={(e) => {
-                const el = e.currentTarget as HTMLElement;
-                if (!el.contains(e.relatedTarget as Node)) openMenu = false;
-              }}
-            >
-              <a
-                href="/account"
-                class="flex items-center gap-2 rounded-lg px-3 py-2
-                  hover:bg-accent hover:text-accent-foreground"
-                onclick={() => (openMenu = false)}
-              >
-                <UserRound class="h-4 w-4" />
-                Profile
-              </a>
-
-              <button
-                type="button"
-                class="flex w-full items-center gap-2 rounded-lg px-3 py-2
-                  hover:bg-accent hover:text-accent-foreground text-left"
-                onclick={() => {
-                  openMenu = false;
-                  showHowItWorks = true;
-                  step = 1;
-                }}
-              >
-                <Info class="h-4 w-4" />
-                How it works
-              </button>
-
-              <a
-                href="https://forms.gle/HEwNNnT6pSWZfaNT6"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="flex items-center gap-2 rounded-lg px-3 py-2
-                  hover:bg-accent hover:text-accent-foreground"
-                onclick={() => (openMenu = false)}
-              >
-                <CirclePlus class="h-4 w-4" />
-                Suggest a market
-              </a>
-
-              <div class="flex items-center justify-between px-3 py-2">
-                <span class="flex items-center gap-2 text-sm">
-                  <Moon class="h-4 w-4" />
-                  Dark mode
-                </span>
-
-                <button
-                  type="button"
-                  aria-label="Toggle dark mode"
-                  class={`relative inline-flex h-6 w-11 items-center rounded-full transition
-                    ${isDark ? "bg-emerald-500" : "bg-muted"}`}
-                  onclick={handleThemeToggle}
-                >
-                  <span
-                    class={`inline-block h-5 w-5 transform rounded-full bg-white transition
-                    ${isDark ? "translate-x-5" : "translate-x-1"}`}
-                  ></span>
-                </button>
-              </div>
-
-              <div class="my-1 h-px bg-border/70"></div>
-
-              <form method="post" action="/logout">
-                <button
-                  type="submit"
-                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2
-                       text-red-500 hover:bg-accent hover:text-red-600"
-                >
-                  <LogOut class="h-4 w-4" />
-                  Logout
-                </button>
-              </form>
-            </div>
-          {/if}
+        <div class="ml-1">
+          <AccountMenu
+            trigger="menu"
+            onHowItWorks={() => (showHowItWorks = true)}
+          />
         </div>
       {:else}
         <!-- NOT AUTHED -->
@@ -235,7 +114,6 @@
           class="hidden sm:inline-flex items-center gap-2 text-sm text-muted-foreground px-2 hover:text-foreground"
           onclick={() => {
             showHowItWorks = true;
-            step = 1;
           }}
         >
           <Info class="h-4 w-4 text-muted-foreground" />
@@ -272,7 +150,6 @@
         class="flex items-center gap-2 text-primary font-medium"
         onclick={() => {
           showHowItWorks = true;
-          step = 1;
         }}
       >
         <Info class="h-4 w-4" />
@@ -292,120 +169,5 @@
 {/if}
 
 {#if showHowItWorks}
-  <div
-    class="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center sm:justify-center"
-    role="button"
-    tabindex="0"
-    onclick={() => (showHowItWorks = false)}
-    onkeydown={(e) => {
-      if (e.key === "Escape" || e.key === "Enter") {
-        showHowItWorks = false;
-      }
-    }}
-  >
-    <!-- svelte-ignore a11y_click_events_have_key_events -->
-    <!-- No Keyboard Input Required in Image div -->
-    <div
-      class="w-full sm:max-w-md overflow-hidden bg-card border border-border shadow-xl rounded-t-2xl sm:rounded-xl max-h-[90vh] overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
-      onclick={(e) => e.stopPropagation()}
-    >
-      <!-- IMAGE -->
-      <div
-        class="relative h-full w-full bg-muted flex items-center justify-center"
-      >
-        <img
-          src={step === 1
-            ? "/how-step-1.webp"
-            : step === 2
-              ? "/how-step-2.webp"
-              : "/how-step-3.webp"}
-          alt="Step illustration"
-          loading="lazy"
-          class="h-full w-full object-contain"
-        />
-        <div
-          class="absolute inset-0 bg-gradient-to-b from-transparent to-card"
-        ></div>
-      </div>
-
-      <!-- CONTENT -->
-      <div class="p-6">
-        <!-- HEADER -->
-        <div class="flex items-start justify-between">
-          <h2 class="text-2xl font-bold">
-            {#if step === 1}
-              <span class="text-primary">1.</span> Pick a Market
-            {:else if step === 2}
-              <span class="text-primary">2.</span> Place a Trade
-            {:else}
-              <span class="text-primary">3.</span> Redeem
-            {/if}
-          </h2>
-
-          <button
-            class="inline-flex h-8 w-8 items-center justify-center
-          rounded-md hover:bg-accent transition"
-            onclick={() => (showHowItWorks = false)}
-            aria-label="Dismiss"
-          >
-            <ChevronDown class="h-5 w-5" />
-          </button>
-        </div>
-
-        <!-- BODY -->
-        <div
-          class="mt-4 text-sm text-muted-foreground space-y-3 leading-relaxed"
-        >
-          {#if step === 1}
-            <p>Choose a Yes or No market based on your view of the outcome.</p>
-            <p>Prices move in real time as other traders buy and sell.</p>
-          {:else if step === 2}
-            <p>Select the number of shares you want to buy.</p>
-            <p>
-              Your potential payout depends on the price at the time of
-              purchase.
-            </p>
-          {:else}
-            <p>When the market resolves, each winning share pays out.</p>
-            <p>You can track performance in your portfolio at any time.</p>
-          {/if}
-        </div>
-
-        <!-- CTA -->
-        <div class="mt-6 flex justify-end">
-          {#if step < 3}
-            <button
-              class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-              onclick={() => step++}
-            >
-              Next
-            </button>
-          {:else}
-            <button
-              class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-              onclick={() => {
-                showHowItWorks = false;
-                if (!isAuthed) goto("/login");
-              }}
-            >
-              Get Started
-            </button>
-          {/if}
-        </div>
-
-        <!-- TERMS -->
-        {#if step === 3}
-          <div class="mt-6 text-xs text-muted-foreground text-center">
-            Trading is subject to eligibility requirements and our
-            <a href="/terms" class="underline hover:text-foreground">
-              Terms and Conditions
-            </a>.
-          </div>
-        {/if}
-      </div>
-    </div>
-  </div>
+  <HowItWorksModal {isAuthed} onClose={() => (showHowItWorks = false)} />
 {/if}

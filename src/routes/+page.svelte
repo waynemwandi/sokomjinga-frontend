@@ -1,6 +1,7 @@
 <!-- src/routes/+page.svelte -->
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
+  import HowItWorksModal from "$lib/components/layout/HowItWorksModal.svelte";
   import { page } from "$app/stores";
   import { onMount, onDestroy } from "svelte";
   import { Bookmark, ChartNoAxesCombined, Gift } from "lucide-svelte";
@@ -22,6 +23,7 @@
   let isAuthed = data.isAuthed;
   let portfolioLabel = data.portfolioLabel ?? "Portfolio KES 0.00";
   let markets = $state(data.markets);
+  let showHowItWorks = $state(false);
 
   const categories = [
     "All markets",
@@ -538,7 +540,11 @@
           rel="noopener noreferrer"
           class="hover:text-foreground transition">Suggest a Market</a
         >
-        <a href="/" class="hover:text-foreground transition">How It Works </a>
+        <button
+          type="button"
+          class="text-left hover:text-foreground transition"
+          onclick={() => (showHowItWorks = true)}>How It Works</button
+        >
         <a href="/terms" class="hover:text-foreground transition">
           Terms of Use
         </a>
@@ -569,3 +575,7 @@
     </div>
   </div>
 </footer>
+
+{#if showHowItWorks}
+  <HowItWorksModal {isAuthed} onClose={() => (showHowItWorks = false)} />
+{/if}

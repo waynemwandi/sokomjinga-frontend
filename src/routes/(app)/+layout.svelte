@@ -1,19 +1,18 @@
 <!-- src/routes/(app)/+layout.svelte -->
 <script lang="ts">
   let sidebarOpen = false;
-  let openMenu = false; // shared account dropdown state for admin + non-admin
+  let showHowItWorks = false;
   const SIDEBAR_W = "280px";
 
-  import { toggleTheme } from "$lib/theme";
   import {
     Sun,
     Moon,
     ChartNoAxesCombined,
-    UserRound,
-    LogOut,
   } from "lucide-svelte";
   import { page } from "$app/state";
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
+  import AccountMenu from "$lib/components/layout/AccountMenu.svelte";
+  import HowItWorksModal from "$lib/components/layout/HowItWorksModal.svelte";
 
   // comes from +layout.server.ts (it already returns { me })
   export let data: {
@@ -30,6 +29,11 @@
         ? "bg-accent/70 text-foreground"
         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     }`;
+
+  const toggleThemeFromButton = async () => {
+    const { toggleTheme } = await import("$lib/theme");
+    toggleTheme();
+  };
 </script>
 
 {#if isAdmin}
@@ -52,57 +56,11 @@
         <div class="ml-2 text-sm text-muted-foreground">Admin</div>
 
         <!-- Mobile account button -->
-        <div class="ml-auto relative">
-          <button
-            class="inline-flex items-center justify-center rounded-md border border-border bg-card p-2"
-            aria-label="Account"
-            aria-haspopup="menu"
-            aria-expanded={openMenu}
-            on:click={() => (openMenu = !openMenu)}
-          >
-            <UserRound class="h-4 w-4" />
-          </button>
-
-          {#if openMenu}
-            <div
-              class="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-popover shadow-lg p-1 text-sm z-50"
-              role="menu"
-              tabindex="-1"
-              on:keydown={(e) => {
-                if (e.key === "Escape") {
-                  e.stopPropagation();
-                  openMenu = false;
-                }
-              }}
-              on:focusout={(e) => {
-                const r = e.currentTarget as HTMLElement;
-                if (!r.contains(e.relatedTarget as Node)) openMenu = false;
-              }}
-            >
-              <a
-                href="/account"
-                class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-                role="menuitem"
-                on:click={() => (openMenu = false)}
-              >
-                <UserRound class="h-4 w-4" />
-                <span>Profile</span>
-              </a>
-
-              <div class="my-1 h-px bg-border/70"></div>
-
-              <form method="post" action="/logout">
-                <button
-                  type="submit"
-                  class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-500 hover:bg-accent hover:text-red-600"
-                  role="menuitem"
-                >
-                  <LogOut class="h-4 w-4" />
-                  <span>Logout</span>
-                </button>
-              </form>
-            </div>
-          {/if}
+        <div class="ml-auto">
+          <AccountMenu
+            trigger="user"
+            onHowItWorks={() => (showHowItWorks = true)}
+          />
         </div>
       </div>
     </header>
@@ -166,7 +124,7 @@
           <div class="ml-auto flex items-center gap-3">
             <button
               class="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-input hover:bg-card transition"
-              on:click={toggleTheme}
+              on:click={toggleThemeFromButton}
               aria-label="Toggle theme"
             >
               <Sun
@@ -183,57 +141,10 @@
             />
 
             <!-- Account dropdown (desktop) -->
-            <div class="relative">
-              <button
-                class="inline-flex text-xs text-muted-foreground hover:text-foreground"
-                aria-haspopup="menu"
-                aria-expanded={openMenu}
-                on:click={() => (openMenu = !openMenu)}
-              >
-                My Account
-              </button>
-
-              {#if openMenu}
-                <div
-                  class="absolute right-0 mt-2 w-56 rounded-xl border border-border bg-popover shadow-lg p-1 text-sm z-50"
-                  role="menu"
-                  tabindex="-1"
-                  on:keydown={(e) => {
-                    if (e.key === "Escape") {
-                      e.stopPropagation();
-                      openMenu = false;
-                    }
-                  }}
-                  on:focusout={(e) => {
-                    const r = e.currentTarget as HTMLElement;
-                    if (!r.contains(e.relatedTarget as Node)) openMenu = false;
-                  }}
-                >
-                  <a
-                    href="/account"
-                    class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-                    role="menuitem"
-                    on:click={() => (openMenu = false)}
-                  >
-                    <UserRound class="h-4 w-4" />
-                    <span>Profile</span>
-                  </a>
-
-                  <div class="my-1 h-px bg-border/70"></div>
-
-                  <form method="post" action="/logout">
-                    <button
-                      type="submit"
-                      class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-red-500 hover:bg-accent hover:text-red-600"
-                      role="menuitem"
-                    >
-                      <LogOut class="h-4 w-4" />
-                      <span>Logout</span>
-                    </button>
-                  </form>
-                </div>
-              {/if}
-            </div>
+            <AccountMenu
+              trigger="text"
+              onHowItWorks={() => (showHowItWorks = true)}
+            />
           </div>
         </div>
       </header>
@@ -326,6 +237,13 @@
           }}
         ></button>
       </div>
+    {/if}
+
+    {#if showHowItWorks}
+      <HowItWorksModal
+        isAuthed={true}
+        onClose={() => (showHowItWorks = false)}
+      />
     {/if}
   </div>
 {:else}
