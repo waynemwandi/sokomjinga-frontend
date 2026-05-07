@@ -48,36 +48,10 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
 };
 
 export const actions: Actions = {
-  signup: async ({ request, cookies }) => {
-    const fd = await request.formData();
-    const email = String(fd.get("email") || "").trim();
-    const password = String(fd.get("password") || "");
-    const confirm = String(fd.get("confirm") || "");
-    const name = String(fd.get("name") || "").trim() || null;
-
-    if (!email || !password) return fail(400, { message: "Missing fields" });
-    if (confirm && confirm !== password)
-      return fail(400, { message: "Passwords do not match" });
-
-    // 1) create user
-    const s = await fetch(`${FETCH_BASE}/auth/signup`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password, name }),
+  signup: async () => {
+    return fail(410, {
+      message: "Email and password sign up is currently disabled. Please use Google.",
     });
-    if (!s.ok) return fail(s.status, { message: await s.text() });
-
-    // 2) login
-    const r = await fetch(`${FETCH_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!r.ok) return fail(r.status, { message: await r.text() });
-
-    const body = await r.json();
-    setAuthCookies(cookies, body.access_token, body.refresh_token, isProd);
-    throw redirect(302, "/");
   },
 
   login: async ({ request, cookies }) => {

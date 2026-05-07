@@ -7,9 +7,11 @@
     X,
   } from "lucide-svelte";
   import { goto } from "$app/navigation";
+  import { PUBLIC_API_BASE } from "$env/static/public";
   import { searchQuery } from "$lib/stores/search";
   import { portfolio } from "$lib/stores/portfolio";
   import AccountMenu from "./AccountMenu.svelte";
+  import AuthModal from "./AuthModal.svelte";
   import HowItWorksModal from "./HowItWorksModal.svelte";
 
   export let portfolioLabel: string | null = null;
@@ -34,9 +36,11 @@
   };
 
   let showHowItWorks = false;
+  let showAuthModal = false;
   let hideHowItWorksBar = false;
 
   let query = "";
+  const googleStartUrl = `${PUBLIC_API_BASE.replace(/\/+$/, "")}/auth/google/start`;
 
   $: searchQuery.set(query);
 </script>
@@ -120,21 +124,23 @@
           How it works
         </button>
 
-        <a
-          href="/login"
+        <button
+          type="button"
           class="inline-flex rounded-md border border-border
          bg-card px-3 py-2 text-sm hover:bg-accent transition"
+          onclick={() => (showAuthModal = true)}
         >
           Log In
-        </a>
+        </button>
 
-        <a
-          href="/login"
+        <button
+          type="button"
           class="inline-flex rounded-md bg-primary
             px-3 py-2 text-sm text-primary-foreground hover:opacity-90 transition"
+          onclick={() => (showAuthModal = true)}
         >
           Sign Up
-        </a>
+        </button>
       {/if}
     </div>
   </div>
@@ -170,4 +176,8 @@
 
 {#if showHowItWorks}
   <HowItWorksModal {isAuthed} onClose={() => (showHowItWorks = false)} />
+{/if}
+
+{#if showAuthModal}
+  <AuthModal {googleStartUrl} onClose={() => (showAuthModal = false)} />
 {/if}
