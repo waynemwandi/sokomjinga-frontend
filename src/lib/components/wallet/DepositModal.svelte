@@ -21,10 +21,18 @@
   let depositId: string | null = null;
   let pollTimer: any = null;
 
-  const quickAmounts = [1000, 5000, 10000, 25000];
+  const quickAmounts = [100, 500, 1000, 2500];
 
   const handleQuickAmount = (val: number) => {
     localAmount = String(val);
+  };
+
+  const formatKES = (amount: string | number) => {
+    const numeric = Number(amount || 0);
+    return `KES ${numeric.toLocaleString("en-KE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   const close = () => {
@@ -117,115 +125,133 @@
 
 {#if open}
   <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <!-- Backdrop -->
     <button
       type="button"
       aria-label="Close deposit modal"
-      class="absolute inset-0 bg-foreground/50"
+      class="absolute inset-0 bg-black/60 backdrop-blur-sm"
       on:click={close}
     ></button>
 
-    <!-- Modal -->
     <div
-      class="relative w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl"
+      class="relative w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Deposit cash"
     >
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Deposit Cash</h2>
-        <button
-          type="button"
-          class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-muted"
-          on:click={close}
-        >
-          Close
-        </button>
+      <div class="border-b border-border px-6 py-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              M-Pesa STK
+            </p>
+            <h2 class="mt-1 text-xl font-semibold">Deposit cash</h2>
+          </div>
+          <button
+            type="button"
+            class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-muted"
+            on:click={close}
+          >
+            Close
+          </button>
+        </div>
       </div>
 
-      <!-- IDLE STATE -->
-      {#if state === "idle"}
-        <form on:submit|preventDefault={handleSubmit} class="space-y-4">
-          <div>
-            <label for="deposit-amount" class="text-xs text-muted-foreground">
-              Amount (KES)
-            </label>
-            <input
-              id="deposit-amount"
-              type="number"
-              min="1"
-              step="1"
-              bind:value={localAmount}
-              class="mt-1 w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
-              required
-            />
-          </div>
+      <div class="px-6 py-5">
+        {#if state === "idle"}
+          <form on:submit|preventDefault={handleSubmit} class="space-y-5">
+            <div class="rounded-xl border border-border bg-background/50 p-4">
+              <div class="flex items-center justify-between">
+                <label for="deposit-amount" class="text-sm text-muted-foreground">
+                  Amount
+                </label>
+                <span class="text-xs text-muted-foreground">KES</span>
+              </div>
+              <input
+                id="deposit-amount"
+                type="number"
+                min="1"
+                step="1"
+                bind:value={localAmount}
+                class="mt-2 w-full rounded-xl border border-border bg-input px-4 py-4 text-right text-2xl font-semibold outline-none transition focus:border-primary"
+                placeholder="0"
+                required
+              />
+              {#if localAmount}
+                <p class="mt-2 text-right text-xs text-muted-foreground">
+                  You will receive an STK prompt for {formatKES(localAmount)}.
+                </p>
+              {/if}
+            </div>
 
-          <div>
-            <p class="text-xs text-muted-foreground mb-1">Quick amounts</p>
-            <div class="grid grid-cols-4 gap-2">
+            <div>
+              <p class="text-xs text-muted-foreground mb-2">Quick amounts</p>
+              <div class="grid grid-cols-4 gap-2">
               {#each quickAmounts as val}
                 <button
                   type="button"
                   on:click={() => handleQuickAmount(val)}
-                  class="rounded-md bg-input px-2 py-1.5 text-xs hover:bg-muted"
+                  class="rounded-md bg-input px-2 py-2 text-xs hover:bg-muted"
                 >
-                  {(val / 1000).toFixed(0)}K
+                  {val >= 1000 ? `${val / 1000}K` : val}
                 </button>
               {/each}
+              </div>
             </div>
-          </div>
 
-          <div class="flex justify-end gap-2">
-            <button
-              type="button"
-              class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-muted"
-              on:click={close}
-            >
-              Cancel
-            </button>
             <button
               type="submit"
-              class="rounded-md border border-border bg-primary/20 px-3 py-1.5 text-sm text-primary hover:bg-primary/30"
+              class="w-full rounded-xl border border-primary bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
-              Deposit
+              Send M-Pesa prompt
             </button>
+          </form>
+        {/if}
+
+        {#if state === "submitting"}
+          <div class="rounded-xl border border-border bg-background/50 p-4">
+            <p class="text-sm font-medium">Sending M-Pesa prompt...</p>
+            <p class="mt-1 text-sm text-muted-foreground">
+              Keep your phone nearby.
+            </p>
           </div>
-        </form>
-      {/if}
+        {/if}
 
-      <!-- SUBMITTING -->
-      {#if state === "submitting"}
-        <p class="text-sm text-muted-foreground">
-          Initiating M-Pesa request...
-        </p>
-      {/if}
+        {#if state === "waiting_stk"}
+          <div class="space-y-4">
+            <div class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <p class="text-sm font-semibold text-emerald-600 dark:text-emerald-300">
+                Check your phone
+              </p>
+              <p class="mt-1 text-sm text-muted-foreground">
+                Enter your M-Pesa PIN to complete the deposit.
+              </p>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground">
+              <div class="rounded-lg bg-input p-2">Prompt sent</div>
+              <div class="rounded-lg bg-input p-2">Enter PIN</div>
+              <div class="rounded-lg bg-input p-2">Confirming</div>
+            </div>
+          </div>
+        {/if}
 
-      <!-- WAITING FOR STK -->
-      {#if state === "waiting_stk"}
-        <div class="space-y-2">
-          <p class="text-sm font-medium">Check your phone.</p>
-          <p class="text-sm text-muted-foreground">
-            Enter your M-Pesa PIN to complete the deposit.
+        {#if state === "success"}
+          <p class="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm font-medium text-emerald-600 dark:text-emerald-300">
+            Deposit successful.
           </p>
-        </div>
-      {/if}
+        {/if}
 
-      <!-- SUCCESS -->
-      {#if state === "success"}
-        <p class="text-sm text-emerald-500 font-medium">Deposit successful.</p>
-      {/if}
+        {#if state === "failed"}
+          <p class="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+            {message}
+          </p>
+        {/if}
 
-      <!-- FAILED -->
-      {#if state === "failed"}
-        <p class="text-sm text-red-500">
-          {message}
-        </p>
-      {/if}
-
-      <!-- TIMEOUT -->
-      {#if state === "timeout"}
-        <p class="text-sm text-yellow-500">
-          {message}
-        </p>
-      {/if}
+        {#if state === "timeout"}
+          <p class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-500">
+            {message}
+          </p>
+        {/if}
+      </div>
     </div>
   </div>
 {/if}

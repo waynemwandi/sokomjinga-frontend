@@ -81,6 +81,22 @@ export const Wallet = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+
+  withdraw: async (payload: { amount_cents: number }) =>
+    j<{
+      id: string;
+      status: string;
+      amount_cents: number;
+      currency: string;
+      mpesa_phone: string | null;
+      reason: string | null;
+      mpesa_reference: string | null;
+      created_at: string;
+      updated_at: string;
+    }>("/wallet/withdrawals", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 /* ===============================

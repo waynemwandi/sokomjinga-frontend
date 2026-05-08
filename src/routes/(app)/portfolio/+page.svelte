@@ -8,6 +8,8 @@
     Heart,
     Timer,
   } from "lucide-svelte";
+  import DepositModal from "$lib/components/wallet/DepositModal.svelte";
+  import WithdrawalModal from "$lib/components/wallet/WithdrawalModal.svelte";
 
   export let data: PageData & {
     wallet?: {
@@ -45,6 +47,8 @@
     yes_percentage?: number;
     no_percentage?: number;
   };
+  let depositOpen = Boolean(data.openDeposit);
+  let withdrawalOpen = false;
 
   type ResultKind = "correct" | "incorrect" | "pending";
   type PositionStatus = "open" | "closed" | "settled";
@@ -410,19 +414,17 @@
           <div class="mt-5 flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
-              onclick={() => goto("/portfolio?deposit=1")}
+              onclick={() => (depositOpen = true)}
               class="flex-1 rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm transition duration-200 hover:-translate-y-0.5 hover:opacity-90 hover:shadow-md active:translate-y-0"
             >
               Deposit cash
             </button>
             <button
               type="button"
+              onclick={() => (withdrawalOpen = true)}
               class="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-950 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-zinc-400 hover:bg-zinc-50 hover:shadow-md active:translate-y-0 disabled:opacity-70 dark:border-border dark:bg-input dark:text-foreground dark:hover:bg-muted"
-              disabled
-              aria-disabled="true"
-              title="Withdrawals coming soon"
             >
-              Withdraw (soon)
+              Withdraw
             </button>
           </div>
         </div>
@@ -728,37 +730,18 @@
       {/if}
     </div>
   </section>
-  {#if data.openDeposit}
-    <div
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-    >
-      <div class="bg-card p-6 rounded-xl border border-border w-full max-w-sm">
-        <p class="text-sm mb-4">Deposit modal restored</p>
-
-        <form method="POST" action="?/deposit">
-          <input
-            type="number"
-            name="amount"
-            placeholder="Enter amount"
-            class="w-full mb-4 rounded-md border px-3 py-2"
-            required
-          />
-
-          <button
-            type="submit"
-            class="w-full rounded-md bg-primary py-2 text-primary-foreground"
-          >
-            Confirm Deposit
-          </button>
-        </form>
-
-        <button
-          class="mt-3 text-xs text-muted-foreground"
-          onclick={() => goto("/portfolio")}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  {/if}
+  <DepositModal
+    open={depositOpen}
+    on:close={() => {
+      depositOpen = false;
+      if (data.openDeposit) goto("/portfolio");
+    }}
+    on:success={() => goto("/portfolio")}
+  />
+  <WithdrawalModal
+    open={withdrawalOpen}
+    balanceCents={data.wallet?.balance_cents ?? 0}
+    on:close={() => (withdrawalOpen = false)}
+    on:success={() => goto("/portfolio")}
+  />
 </main>
