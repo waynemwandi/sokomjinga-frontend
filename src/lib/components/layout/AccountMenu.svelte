@@ -3,6 +3,7 @@
   import { toggleTheme } from "$lib/theme";
   import {
     CirclePlus,
+    ChartNoAxesCombined,
     Info,
     LogOut,
     Menu,
@@ -70,6 +71,16 @@
       >
         <UserRound class="h-4 w-4" />
         <span>Profile</span>
+      </a>
+
+      <a
+        href="/portfolio"
+        class="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-accent hover:text-accent-foreground"
+        role="menuitem"
+        onclick={() => (openMenu = false)}
+      >
+        <ChartNoAxesCombined class="h-4 w-4" />
+        <span>Portfolio</span>
       </a>
 
       <button
