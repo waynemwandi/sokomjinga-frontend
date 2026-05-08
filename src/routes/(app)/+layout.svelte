@@ -8,6 +8,11 @@
     Sun,
     Moon,
     ChartNoAxesCombined,
+    LayoutDashboard,
+    Store,
+    Wallet,
+    BanknoteArrowUp,
+    Activity,
   } from "lucide-svelte";
   import { page } from "$app/state";
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
@@ -24,9 +29,9 @@
     (data.me as any)?.is_admin === true || (data.me as any)?.role === "admin";
 
   const navClass = (href: string, path: string) =>
-    `block rounded px-3 py-2 transition-colors ${
+    `flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
       path === href || path.startsWith(href + "/")
-        ? "bg-accent/70 text-foreground"
+        ? "border border-border bg-white text-zinc-950 shadow-sm dark:border-white dark:bg-white dark:text-zinc-950"
         : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
     }`;
 
@@ -72,11 +77,11 @@
     >
       <!-- Sidebar (desktop) -->
       <aside
-        class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-card/60 backdrop-blur"
+        class="hidden md:block row-span-2 sticky top-0 h-[100dvh] border-r border-border bg-zinc-50/90 backdrop-blur dark:bg-card/60"
       >
         <a
           href="/"
-          class="flex items-center gap-2 p-4 hover:bg-accent rounded-md"
+          class="mx-3 mt-3 flex items-center gap-2 rounded-xl px-3 py-3 hover:bg-accent"
         >
           <div
             class="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md"
@@ -86,23 +91,35 @@
           <span class="text-sm font-semibold">MaoniMarket</span>
         </a>
 
-        <nav class="px-2 space-y-1 text-sm">
+        <div class="px-6 pb-3 pt-5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Operations
+        </div>
+
+        <nav class="px-3 space-y-1 text-sm">
           <a
             href="/admin/dashboard"
-            class={navClass("/admin/dashboard", page.url.pathname)}>Dashboard</a
+            class={navClass("/admin/dashboard", page.url.pathname)}
+            ><LayoutDashboard class="size-4" />Dashboard</a
           >
           <a
             href="/admin/markets"
-            class={navClass("/admin/markets", page.url.pathname)}>Markets</a
+            class={navClass("/admin/markets", page.url.pathname)}
+            ><Store class="size-4" />Markets</a
           >
           <a
             href="/admin/wallets"
-            class={navClass("/admin/wallets", page.url.pathname)}>Wallets</a
+            class={navClass("/admin/wallets", page.url.pathname)}
+            ><Wallet class="size-4" />Wallets</a
+          >
+          <a
+            href="/admin/withdrawals"
+            class={navClass("/admin/withdrawals", page.url.pathname)}
+            ><BanknoteArrowUp class="size-4" />Withdrawals</a
           >
           <a
             href="/admin/api-status"
             class={navClass("/admin/api-status", page.url.pathname)}
-            >API Status</a
+            ><Activity class="size-4" />API Status</a
           >
         </nav>
 
@@ -163,7 +180,7 @@
     {#if sidebarOpen}
       <div class="fixed inset-0 z-50 flex" role="dialog" aria-modal="true">
         <div
-          class="w-[72%] max-w-[320px] h-full border-r border-border bg-card"
+          class="w-[72%] max-w-[320px] h-full border-r border-border bg-zinc-50 dark:bg-card"
         >
           <div class="p-4 flex items-center justify-between">
             <a
@@ -188,13 +205,17 @@
             </button>
           </div>
 
-          <nav class="px-2 space-y-1 text-sm">
+          <div class="px-5 pb-3 pt-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Operations
+          </div>
+
+          <nav class="px-3 space-y-1 text-sm">
             <a
               href="/admin/dashboard"
               class={navClass("/admin/dashboard", page.url.pathname)}
               on:click={() => (sidebarOpen = false)}
             >
-              Dashboard
+              <LayoutDashboard class="size-4" />Dashboard
             </a>
 
             <a
@@ -202,7 +223,7 @@
               class={navClass("/admin/markets", page.url.pathname)}
               on:click={() => (sidebarOpen = false)}
             >
-              Markets
+              <Store class="size-4" />Markets
             </a>
 
             <a
@@ -210,7 +231,15 @@
               class={navClass("/admin/wallets", page.url.pathname)}
               on:click={() => (sidebarOpen = false)}
             >
-              Wallets
+              <Wallet class="size-4" />Wallets
+            </a>
+
+            <a
+              href="/admin/withdrawals"
+              class={navClass("/admin/withdrawals", page.url.pathname)}
+              on:click={() => (sidebarOpen = false)}
+            >
+              <BanknoteArrowUp class="size-4" />Withdrawals
             </a>
 
             <a
@@ -218,7 +247,7 @@
               class={navClass("/admin/api-status", page.url.pathname)}
               on:click={() => (sidebarOpen = false)}
             >
-              API Status
+              <Activity class="size-4" />API Status
             </a>
           </nav>
         </div>

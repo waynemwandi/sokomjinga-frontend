@@ -34,24 +34,24 @@
     userPageSize: number;
   };
 
-  const s = data.stats;
-  const points = data.authSeries?.points ?? [];
-  const users = data.users?.items ?? [];
-  const userPage = data.userPage ?? 0;
-  const userPageSize = data.userPageSize ?? 10;
-  const totalUsers = data.users?.total ?? 0;
-  const totalUserPages = Math.max(1, Math.ceil(totalUsers / userPageSize));
-  const maxLogins = Math.max(1, ...points.map((p) => p.logins));
-  const totalChartLogins = points.reduce((sum, p) => sum + p.logins, 0);
-  const activeDays = points.filter((p) => p.logins > 0).length;
-  const peakPoint =
+  $: s = data.stats;
+  $: points = data.authSeries?.points ?? [];
+  $: users = data.users?.items ?? [];
+  $: userPage = data.userPage ?? 0;
+  $: userPageSize = data.userPageSize ?? 10;
+  $: totalUsers = data.users?.total ?? 0;
+  $: totalUserPages = Math.max(1, Math.ceil(totalUsers / userPageSize));
+  $: maxLogins = Math.max(1, ...points.map((p) => p.logins));
+  $: totalChartLogins = points.reduce((sum, p) => sum + p.logins, 0);
+  $: activeDays = points.filter((p) => p.logins > 0).length;
+  $: peakPoint =
     points.length > 0
       ? points.reduce((max, p) => (p.logins > max.logins ? p : max), points[0])
       : null;
 
   let expandedUserId: string | null = null;
 
-  const cards = s
+  $: cards = s
     ? [
         {
           title: "Total users",
@@ -343,6 +343,7 @@
     >
       <a
         href={`?page=${Math.max(0, userPage - 1)}`}
+        data-sveltekit-noscroll
         class={`rounded-md border border-border px-3 py-1.5 transition ${
           userPage === 0
             ? "pointer-events-none opacity-40"
@@ -358,6 +359,7 @@
 
       <a
         href={`?page=${userPage + 1}`}
+        data-sveltekit-noscroll
         class={`rounded-md border border-border px-3 py-1.5 transition ${
           (userPage + 1) * userPageSize >= totalUsers
             ? "pointer-events-none opacity-40"
