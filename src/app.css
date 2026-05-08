@@ -211,6 +211,46 @@
     @apply rounded-md border px-3 py-2.5 text-sm transition-colors;
   }
 
+  .admin-panel {
+    @apply rounded-xl border border-border bg-card/80 shadow-sm;
+  }
+
+  .admin-panel-header {
+    @apply flex flex-col gap-3 border-b border-border/60 p-5 md:flex-row md:items-center md:justify-between;
+  }
+
+  .admin-control {
+    @apply rounded-md border border-border bg-input px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring;
+  }
+
+  .admin-button {
+    @apply rounded-md border border-border bg-input px-3 py-2 text-sm transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .admin-button-primary {
+    @apply rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .admin-table {
+    @apply w-full text-left text-sm;
+  }
+
+  .admin-table thead {
+    @apply border-b border-border/60 text-xs text-muted-foreground;
+  }
+
+  .admin-table th {
+    @apply px-5 py-3 font-medium;
+  }
+
+  .admin-table td {
+    @apply px-5 py-4;
+  }
+
+  .admin-table tbody {
+    @apply divide-y divide-border/60;
+  }
+
   .btn-yes {
     background-color: var(--yes-bg);
     color: var(--yes-ink);

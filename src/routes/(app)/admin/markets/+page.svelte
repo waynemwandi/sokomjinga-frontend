@@ -256,23 +256,29 @@
   $: (filtered, (page = 1));
 </script>
 
+<div class="space-y-6">
 <!-- ===========================
   Header Row
 =========================== -->
-<div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center">
-  <h1 class="text-xl font-semibold mb-4">Markets</h1>
+<div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Markets</h1>
+    <p class="mt-1 text-sm text-muted-foreground">
+      Create, archive, close and settle prediction markets.
+    </p>
+  </div>
 
-  <div class="ml-0 md:ml-auto flex w-full md:w-auto items-center gap-2">
+  <div class="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:items-center">
     <!-- Search -->
     <input
       bind:value={q}
       placeholder="Search markets…"
-      class="w-full md:w-75 rounded-md bg-input px-3 py-1.5 text-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+      class="admin-control w-full lg:w-80"
       aria-label="Search markets"
     />
 
     <!-- Only open checkbox -->
-    <label class="inline-flex items-center gap-2 text-sm">
+    <label class="admin-button inline-flex items-center gap-2">
       <input
         type="checkbox"
         bind:checked={onlyOpen}
@@ -283,7 +289,7 @@
 
     <select
       bind:value={archiveFilter}
-      class="rounded-md border border-border bg-input px-3 py-1.5 text-sm"
+      class="admin-control"
       aria-label="Archive filter"
     >
       <option value="visible">Visible</option>
@@ -293,7 +299,7 @@
 
     <!-- Refresh button -->
     <button
-      class="rounded-md border border-border bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 transition"
+      class="admin-button"
       on:click={refreshPage}
     >
       {refreshing ? "Refreshing..." : "Refresh"}
@@ -301,7 +307,7 @@
 
     <!-- New Market -->
     <button
-      class="rounded-md border border-border bg-primary/10 px-3 py-1.5 text-sm text-primary hover:bg-primary/20 transition"
+      class="admin-button-primary"
       on:click={() => (showCreate = true)}
     >
       + New Market
@@ -729,26 +735,37 @@
 {:else if error}
   <div class="text-sm text-red-500">{error}</div>
 {:else if filtered.length === 0}
-  <div class="text-sm text-muted-foreground">No markets found.</div>
+  <div class="admin-panel p-6 text-sm text-muted-foreground">No markets found.</div>
 {:else}
-  <div class="overflow-x-auto rounded-lg border border-border">
-    <table class="min-w-full text-sm">
-      <thead class="bg-card/60">
-        <tr class="text-left">
-          <th class="px-3 py-2 font-medium">Title</th>
-          <th class="px-3 py-2 font-medium">Status</th>
-          <th class="px-3 py-2 font-medium">Outcomes</th>
-          <th class="px-3 py-2 font-medium">Created</th>
-          <th class="px-3 py-2 font-medium">Updated</th>
-          <th class="px-3 py-2 font-medium">Projected End</th>
-          <th class="px-3 py-2 font-medium text-right">Actions</th>
+  <section class="admin-panel overflow-hidden">
+    <div class="admin-panel-header">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">Market list</h2>
+        <p class="mt-1 text-sm text-muted-foreground">
+          {filtered.length} market{filtered.length === 1 ? "" : "s"} matching the current view.
+        </p>
+      </div>
+      <div class="text-xs text-muted-foreground">Page {page} of {totalPages}</div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="admin-table min-w-[1120px]">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Outcomes</th>
+            <th>Created</th>
+            <th>Updated</th>
+            <th>Projected End</th>
+            <th class="text-right">Actions</th>
         </tr>
       </thead>
 
       <tbody>
         {#each paginated as m (m.id)}
-          <tr class="border-t border-border">
-            <td class="px-3 py-2 align-top">
+          <tr class="align-top">
+            <td>
               <div class="font-medium">{m.title}</div>
               {#if m.category}
                 <span
@@ -769,7 +786,7 @@
               {/if}
             </td>
 
-            <td class="px-3 py-2 align-top">
+            <td>
               <span
                 class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs
                 {(m.status ?? 'open') === 'open'
@@ -786,7 +803,7 @@
               </span>
             </td>
 
-            <td class="px-3 py-2 align-top">
+            <td>
               {#if m.outcomes?.length}
                 <div class="flex flex-wrap gap-1">
                   {#each m.outcomes as o}
@@ -803,19 +820,19 @@
               {/if}
             </td>
 
-            <td class="px-3 py-2 align-top">
+            <td>
               <time class="text-xs text-muted-foreground">
                 {m.created_at ? formatDateTime(m.created_at) : "—"}
               </time>
             </td>
 
-            <td class="px-3 py-2 align-top">
+            <td>
               <time class="text-xs text-muted-foreground">
                 {m.updated_at ? formatDateTime(m.updated_at) : "—"}
               </time>
             </td>
 
-            <td class="px-3 py-2 align-top">
+            <td>
               {#if m.projected_end_date}
                 <time class="text-xs text-muted-foreground">
                   {formatDate(m.projected_end_date)}
@@ -825,17 +842,17 @@
               {/if}
             </td>
 
-            <td class="px-3 py-2 align-top">
-              <div class="flex justify-evenly gap-2">
+            <td>
+              <div class="flex justify-end gap-2">
                 <button
-                  class="h-8 px-3 text-xs rounded-md border border-border bg-input hover:bg-card transition"
+                  class="admin-button h-8 px-3 py-0 text-xs"
                   on:click={() => onEdit(m)}
                 >
                   Edit
                 </button>
 
                 <button
-                  class="h-8 px-3 text-xs rounded-md border border-border bg-input hover:bg-card transition"
+                  class="admin-button h-8 px-3 py-0 text-xs"
                   on:click={() => onArchive(m)}
                 >
                   {m.is_archived ? "Unarchive" : "Archive"}
@@ -869,16 +886,15 @@
         {/each}
       </tbody>
     </table>
-    <div
-      class="flex items-center justify-between px-3 py-2 border-t border-border bg-card/40 text-xs"
-    >
+    </div>
+    <div class="flex items-center justify-between border-t border-border/60 px-5 py-4 text-sm">
       <div>
         Page {page} of {totalPages}
       </div>
 
       <div class="flex gap-2">
         <button
-          class="px-2 py-1 rounded border border-border bg-input disabled:opacity-40"
+          class="admin-button px-3 py-1.5"
           on:click={() => (page = Math.max(1, page - 1))}
           disabled={page === 1}
         >
@@ -886,7 +902,7 @@
         </button>
 
         <button
-          class="px-2 py-1 rounded border border-border bg-input disabled:opacity-40"
+          class="admin-button px-3 py-1.5"
           on:click={() => (page = Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
         >
@@ -894,8 +910,9 @@
         </button>
       </div>
     </div>
-  </div>
+  </section>
 {/if}
+</div>
 
 <!-- ===========================
   Shared Category Options

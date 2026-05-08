@@ -1,5 +1,7 @@
 <!-- src/routes/(app)/admin/dashboard/+page.svelte -->
 <script lang="ts">
+  import { goto } from "$app/navigation";
+
   export let data: {
     stats: {
       total_users: number;
@@ -32,6 +34,7 @@
     } | null;
     userPage: number;
     userPageSize: number;
+    userSearch: string;
   };
 
   $: s = data.stats;
@@ -40,8 +43,10 @@
   $: userPage = data.userPage ?? 0;
   $: userPageSize = data.userPageSize ?? 10;
   $: totalUsers = data.users?.total ?? 0;
+  $: userSearch = data.userSearch ?? "";
   $: totalUserPages = Math.max(1, Math.ceil(totalUsers / userPageSize));
   $: maxLogins = Math.max(1, ...points.map((p) => p.logins));
+  $: midLogins = Math.ceil(maxLogins / 2);
   $: totalChartLogins = points.reduce((sum, p) => sum + p.logins, 0);
   $: activeDays = points.filter((p) => p.logins > 0).length;
   $: peakPoint =
@@ -50,6 +55,14 @@
       : null;
 
   let expandedUserId: string | null = null;
+  let userQuery = data.userSearch ?? "";
+  let lastSyncedSearch = data.userSearch ?? "";
+  let searchTimer: number | undefined;
+
+  $: if ((data.userSearch ?? "") !== lastSyncedSearch) {
+    lastSyncedSearch = data.userSearch ?? "";
+    userQuery = lastSyncedSearch;
+  }
 
   $: cards = s
     ? [
@@ -104,6 +117,31 @@
   };
 
   const barHeight = (logins: number) => `${Math.max(4, (logins / maxLogins) * 100)}%`;
+
+  const userPageHref = (nextPage: number) => {
+    const params = new URLSearchParams();
+    if (userSearch) params.set("q", userSearch);
+    params.set("page", String(nextPage));
+    return `?${params.toString()}`;
+  };
+
+  function scheduleUserSearch() {
+    if (searchTimer) window.clearTimeout(searchTimer);
+
+    searchTimer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      const nextQuery = userQuery.trim();
+
+      if (nextQuery) params.set("q", nextQuery);
+      params.set("page", "0");
+
+      const nextUrl = params.toString()
+        ? `/admin/dashboard?${params.toString()}`
+        : "/admin/dashboard";
+
+      goto(nextUrl, { noScroll: true, keepFocus: true });
+    }, 250);
+  }
 </script>
 
 <div class="space-y-8">
@@ -114,11 +152,9 @@
     </p>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
     {#each cards as c}
-      <div
-        class="rounded-xl border border-border bg-card/80 p-5 shadow-sm transition-colors hover:border-primary/40"
-      >
+      <div class="admin-panel p-5 transition-colors hover:border-primary/40">
         <div class="text-sm text-muted-foreground">{c.title}</div>
         <div class="mt-3 text-3xl font-semibold tracking-tight">{c.value}</div>
         {#if c.note}
@@ -128,7 +164,7 @@
     {/each}
   </div>
 
-  <section class="rounded-xl border border-border bg-card/80 p-5 shadow-sm">
+  <section class="admin-panel p-5">
     <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
       <div>
         <h2 class="text-lg font-semibold tracking-tight">Login activity</h2>
@@ -158,94 +194,126 @@
         No login activity yet.
       </div>
     {:else}
-      <div class="h-56 rounded-xl border border-border/60 bg-background/30 p-4">
-        <div class="flex h-full items-end gap-1">
-          {#each points as point, index}
-            <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div class="flex h-40 w-full items-end">
-                <div
-                  class="mx-auto w-full max-w-7 rounded-t bg-emerald-500/80 transition-all"
-                  title={`${formatShortDate(point.date)}: ${point.logins} logins`}
-                  style={`height: ${barHeight(point.logins)}`}
-                ></div>
-              </div>
-              {#if index === 0 || index === points.length - 1 || index % 7 === 0}
-                <div class="w-14 truncate text-center text-[10px] text-muted-foreground">
-                  {formatShortDate(point.date)}
+      <div class="rounded-xl border border-border/60 bg-background/30 p-4">
+        <div class="grid h-60 grid-cols-[3rem_1fr] gap-3">
+          <div class="flex h-44 flex-col justify-between pt-1 text-right text-[10px] text-muted-foreground">
+            <span>{maxLogins}</span>
+            <span>{midLogins}</span>
+            <span>0</span>
+          </div>
+
+          <div class="relative">
+            <div class="absolute inset-x-0 top-0 border-t border-border/60"></div>
+            <div class="absolute inset-x-0 top-1/2 border-t border-border/40"></div>
+            <div class="absolute inset-x-0 bottom-[28px] border-t border-border/60"></div>
+
+            <div class="relative flex h-full items-end gap-1">
+              {#each points as point, index}
+                <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div class="flex h-44 w-full items-end">
+                    <div
+                      class="mx-auto w-full max-w-7 rounded-t bg-emerald-500/80 transition-all"
+                      title={`${formatShortDate(point.date)}: ${point.logins} logins`}
+                      style={`height: ${barHeight(point.logins)}`}
+                    ></div>
+                  </div>
+                  {#if index === 0 || index === points.length - 1 || index % 7 === 0}
+                    <div class="w-14 truncate text-center text-[10px] text-muted-foreground">
+                      {formatShortDate(point.date)}
+                    </div>
+                  {:else}
+                    <div class="h-[14px]"></div>
+                  {/if}
                 </div>
-              {:else}
-                <div class="h-[14px]"></div>
-              {/if}
+              {/each}
             </div>
-          {/each}
+          </div>
+        </div>
+
+        <div class="mt-2 pl-[3.75rem] text-[11px] text-muted-foreground">
+          Bar height = successful logins per day.
         </div>
       </div>
     {/if}
   </section>
 
-  <section class="rounded-xl border border-border bg-card/80 shadow-sm">
-    <div
-      class="flex flex-col gap-2 border-b border-border/60 p-5 md:flex-row md:items-center md:justify-between"
-    >
+  <section class="admin-panel">
+    <div class="admin-panel-header">
       <div>
         <h2 class="text-lg font-semibold tracking-tight">Users</h2>
         <p class="mt-1 text-sm text-muted-foreground">
-          {totalUsers} accounts in MaoniMarket.
+          {totalUsers} matching account{totalUsers === 1 ? "" : "s"}.
         </p>
       </div>
-      <div class="text-xs text-muted-foreground">
-        Page {userPage + 1} of {totalUserPages}
+
+      <div class="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+        <input
+          class="admin-control w-full sm:w-80"
+          bind:value={userQuery}
+          oninput={scheduleUserSearch}
+          placeholder="Search users..."
+          aria-label="Search users by name or email"
+        />
+        {#if userQuery.trim()}
+          <a href="/admin/dashboard" data-sveltekit-noscroll class="admin-button text-center">
+            Clear
+          </a>
+        {/if}
       </div>
+    </div>
+
+    <div class="border-b border-border/60 px-5 py-3 text-xs text-muted-foreground">
+      Page {userPage + 1} of {totalUserPages}
     </div>
 
     {#if users.length === 0}
       <div class="p-6 text-sm text-muted-foreground">No users found.</div>
     {:else}
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[980px] text-left text-sm">
-          <thead class="border-b border-border/60 text-xs text-muted-foreground">
+        <table class="admin-table min-w-[980px]">
+          <thead>
             <tr>
-              <th class="px-5 py-3 font-medium">User</th>
-              <th class="px-5 py-3 font-medium">Role</th>
-              <th class="px-5 py-3 font-medium">Provider</th>
-              <th class="px-5 py-3 font-medium">Activity</th>
-              <th class="px-5 py-3 font-medium">Joined</th>
-              <th class="px-5 py-3 text-right font-medium">Actions</th>
+              <th>User</th>
+              <th>Role</th>
+              <th>Provider</th>
+              <th>Activity</th>
+              <th>Joined</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-border/60">
+          <tbody>
             {#each users as user}
               <tr class="align-top">
-                <td class="px-5 py-4">
+                <td>
                   <div class="font-medium">{user.name || "Unnamed user"}</div>
                   <div class="mt-1 text-xs text-muted-foreground">{user.email}</div>
                   <div class="mt-2">
                     <span
                       class={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${
                         user.is_active
-                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                          : "border-red-500/30 bg-red-500/10 text-red-400"
+                          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
                       }`}
                     >
                       {user.is_active ? "Active" : "Inactive"}
                     </span>
                   </div>
                 </td>
-                <td class="px-5 py-4">
+                <td>
                   <span
                     class={`inline-flex rounded-md border px-2 py-0.5 text-xs ${
                       user.is_admin
-                        ? "border-blue-500/30 bg-blue-500/10 text-blue-400"
+                        ? "border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         : "border-border bg-background/40 text-muted-foreground"
                     }`}
                   >
                     {user.is_admin ? "Admin" : "User"}
                   </span>
                 </td>
-                <td class="px-5 py-4 capitalize text-muted-foreground">
+                <td class="capitalize text-muted-foreground">
                   {user.auth_provider || "unknown"}
                 </td>
-                <td class="px-5 py-4">
+                <td>
                   <div class="flex flex-wrap gap-2 text-xs">
                     <span class="rounded-md border border-border bg-background/40 px-2 py-1">
                       {user.bets} bets
@@ -258,15 +326,15 @@
                     </span>
                   </div>
                 </td>
-                <td class="px-5 py-4 text-muted-foreground">
+                <td class="text-muted-foreground">
                   <div>{formatDate(user.created_at)}</div>
                   <div class="mt-1 text-xs">Last login: {formatDate(user.last_login_at)}</div>
                 </td>
-                <td class="px-5 py-4">
+                <td>
                   <div class="flex justify-end gap-2">
                     <button
                       type="button"
-                      class="rounded-md border border-border bg-background/40 px-3 py-1.5 text-xs hover:bg-accent"
+                      class="admin-button px-3 py-1.5 text-xs"
                       onclick={() =>
                         (expandedUserId = expandedUserId === user.id ? null : user.id)}
                     >
@@ -285,13 +353,11 @@
                         disabled={user.is_admin}
                         class={`rounded-md border px-3 py-1.5 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 ${
                           user.is_active
-                            ? "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                            ? "border-red-500/30 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
                         }`}
                         onclick={(event) => {
-                          const action = user.is_active
-                            ? "Deactivate"
-                            : "Activate";
+                          const action = user.is_active ? "Deactivate" : "Activate";
                           if (
                             !confirm(
                               `${action} ${user.email}? ${
@@ -314,7 +380,7 @@
 
               {#if expandedUserId === user.id}
                 <tr>
-                  <td colspan="6" class="bg-background/30 px-5 py-4">
+                  <td colspan="6" class="bg-background/30">
                     <div class="grid gap-3 text-xs text-muted-foreground md:grid-cols-3">
                       <div>
                         <div class="font-medium text-foreground">User ID</div>
@@ -338,16 +404,12 @@
       </div>
     {/if}
 
-    <div
-      class="flex items-center justify-between border-t border-border/60 px-5 py-4 text-sm"
-    >
+    <div class="flex items-center justify-between border-t border-border/60 px-5 py-4 text-sm">
       <a
-        href={`?page=${Math.max(0, userPage - 1)}`}
+        href={userPageHref(Math.max(0, userPage - 1))}
         data-sveltekit-noscroll
-        class={`rounded-md border border-border px-3 py-1.5 transition ${
-          userPage === 0
-            ? "pointer-events-none opacity-40"
-            : "hover:bg-accent"
+        class={`admin-button px-3 py-1.5 ${
+          userPage === 0 ? "pointer-events-none opacity-40" : ""
         }`}
       >
         Previous
@@ -358,12 +420,12 @@
       </span>
 
       <a
-        href={`?page=${userPage + 1}`}
+        href={userPageHref(userPage + 1)}
         data-sveltekit-noscroll
-        class={`rounded-md border border-border px-3 py-1.5 transition ${
+        class={`admin-button px-3 py-1.5 ${
           (userPage + 1) * userPageSize >= totalUsers
             ? "pointer-events-none opacity-40"
-            : "hover:bg-accent"
+            : ""
         }`}
       >
         Next

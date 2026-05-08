@@ -58,6 +58,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const access = cookies.get("access_token");
   const headers = authHeaders(access);
   const page = Math.max(0, Number(url.searchParams.get("page") ?? "0") || 0);
+  const q = (url.searchParams.get("q") ?? "").trim();
   const offset = page * PAGE_SIZE;
 
   const statsRes = await fetch(`${BASE}/admin/stats`, { headers });
@@ -65,7 +66,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
     headers,
   });
   const usersRes = await fetch(
-    `${BASE}/admin/users?limit=${PAGE_SIZE}&offset=${offset}`,
+    `${BASE}/admin/users?limit=${PAGE_SIZE}&offset=${offset}&q=${encodeURIComponent(q)}`,
     { headers },
   );
 
@@ -80,6 +81,7 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
     users: usersRes.ok ? ((await usersRes.json()) as AdminUsers) : null,
     userPage: page,
     userPageSize: PAGE_SIZE,
+    userSearch: q,
   };
 };
 

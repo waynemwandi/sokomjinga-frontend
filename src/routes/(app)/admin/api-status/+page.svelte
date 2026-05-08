@@ -1,13 +1,12 @@
 <!-- src/routes/(app)/admin/api-status/+page.svelte -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { API_BASE } from "$lib/api";
 
   let status: "checking" | "RUNNING" | "DOWN" = "checking";
   let data: any = null;
   let error: string | null = null;
   let latency: number | null = null;
-
-  import { API_BASE } from "$lib/api";
 
   const url = `${API_BASE}/health`;
 
@@ -35,80 +34,87 @@
   onMount(check);
 </script>
 
-<h1 class="text-2xl font-semibold mb-6">API Status</h1>
-
-<div
-  class="rounded-2xl border border-border bg-card/80 p-6 space-y-6 shadow-sm"
->
-  <!-- STATUS BADGE -->
-  <div class="flex items-center justify-between">
-    <div class="text-sm text-muted-foreground">
-      Health endpoint: <code class="text-foreground">{url}</code>
+<div class="space-y-6">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">API Status</h1>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Check whether the backend health endpoint is reachable.
+      </p>
     </div>
 
-    <div class="flex items-center gap-2">
+    <button class="admin-button-primary w-full sm:w-auto" on:click={check}>
+      {status === "checking" ? "Checking..." : "Recheck"}
+    </button>
+  </div>
+
+  <section class="admin-panel">
+    <div class="admin-panel-header">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">Health check</h2>
+        <p class="mt-1 break-all text-sm text-muted-foreground">
+          Endpoint: <code class="text-foreground">{url}</code>
+        </p>
+      </div>
+
       {#if status === "RUNNING"}
         <span
-          class="px-3 py-1 text-xs rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          class="inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
         >
           RUNNING
         </span>
       {:else if status === "DOWN"}
         <span
-          class="px-3 py-1 text-xs rounded-full bg-red-500/20 text-red-400 border border-red-500/30"
+          class="inline-flex rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400"
         >
           DOWN
         </span>
       {:else}
         <span
-          class="px-3 py-1 text-xs rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+          class="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-600 dark:text-amber-400"
         >
           CHECKING
         </span>
       {/if}
     </div>
-  </div>
 
-  <!-- META INFO -->
-  {#if status === "RUNNING" && data}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-      <div class="rounded-xl bg-muted/30 p-4 border border-border">
-        <div class="text-muted-foreground text-xs mb-1">Service</div>
-        <div class="font-medium">{data.service ?? "Unknown"}</div>
+    <div class="space-y-5 p-5">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div class="rounded-xl border border-border bg-background/40 p-4">
+          <div class="text-xs text-muted-foreground">Service</div>
+          <div class="mt-2 font-semibold">{data?.service ?? "Unknown"}</div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-background/40 p-4">
+          <div class="text-xs text-muted-foreground">Response time</div>
+          <div class="mt-2 font-semibold">
+            {latency == null ? "-" : `${latency} ms`}
+          </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-background/40 p-4">
+          <div class="text-xs text-muted-foreground">Last checked</div>
+          <div class="mt-2 break-all font-semibold">{data?.time ?? "-"}</div>
+        </div>
       </div>
 
-      <div class="rounded-xl bg-muted/30 p-4 border border-border">
-        <div class="text-muted-foreground text-xs mb-1">Response Time</div>
-        <div class="font-medium">{latency} ms</div>
-      </div>
-
-      <div class="rounded-xl bg-muted/30 p-4 border border-border">
-        <div class="text-muted-foreground text-xs mb-1">Timestamp</div>
-        <div class="font-medium">{data.time ?? "-"}</div>
-      </div>
+      {#if data}
+        <div class="rounded-xl border border-border bg-background/50 p-4">
+          <div class="mb-3 text-sm font-medium">Raw response</div>
+          <pre class="overflow-x-auto text-xs text-emerald-600 dark:text-emerald-300">{JSON.stringify(data, null, 2)}</pre>
+        </div>
+      {:else if error}
+        <div class="rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+          <div class="mb-3 text-sm font-medium text-red-600 dark:text-red-400">
+            Request failed
+          </div>
+          <pre class="overflow-x-auto text-xs text-red-600 dark:text-red-400">{error}</pre>
+        </div>
+      {:else}
+        <div class="rounded-xl border border-border bg-background/50 p-4 text-sm text-muted-foreground">
+          Waiting for the health response.
+        </div>
+      {/if}
     </div>
-  {/if}
-
-  <!-- JSON OUTPUT -->
-  {#if data}
-    <div class="rounded-xl bg-black/40 p-4 border border-border">
-      <pre class="text-xs overflow-x-auto text-emerald-300">
-{JSON.stringify(data, null, 2)}
-      </pre>
-    </div>
-  {:else if error}
-    <div class="rounded-xl bg-red-500/10 p-4 border border-red-500/20">
-      <pre class="text-xs text-red-400">{error}</pre>
-    </div>
-  {/if}
-
-  <!-- ACTION -->
-  <div class="flex justify-end">
-    <button
-      class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90 transition"
-      on:click={check}
-    >
-      Recheck
-    </button>
-  </div>
+  </section>
 </div>
