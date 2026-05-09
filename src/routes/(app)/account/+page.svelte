@@ -1,64 +1,59 @@
 <!-- src/routes/(app)/account/+page.svelte -->
 <script lang="ts">
-  import { Mail, Phone, ArrowUpRight, Settings } from "lucide-svelte";
-  import DepositModal from "$lib/components/wallet/DepositModal.svelte";
   import { page } from "$app/stores";
-  import { Wallet, getJSON } from "$lib/api";
+  import { Mail, MessageSquareText, Phone, UserRound } from "lucide-svelte";
+  import DepositModal from "$lib/components/wallet/DepositModal.svelte";
 
-  // Shape for /me/bets response (flat, not nested market)
-  type Bet = {
-    bet_id?: string;
-    id?: string;
-    market_id?: string;
-    title?: string;
-    category?: string;
-    prediction?: "yes" | "no" | string;
-    result?: "correct" | "incorrect" | "pending" | string;
-    created_at?: string;
-    yes_percentage?: number;
-    no_percentage?: number;
+  type StatementItem = {
+    id: string;
+    created_at: string;
+    kind: string;
+    signed_amount_cents: number;
+    direction: "in" | "out";
+    reference_type?: string | null;
+    reference_id?: string | null;
+    description?: string | null;
+    mpesa_reference?: string | null;
+    mpesa_phone?: string | null;
   };
 
   export let data: {
     user: any;
-    bets?: Bet[];
-    positions?: any[];
     profile?: {
       phone_e164?: string | null;
       phone_verified?: boolean;
+      username?: string | null;
+      avatar_url?: string | null;
+      bio?: string | null;
     };
-    wallet?: any;
-    statement?: { items: any[]; total: number };
+    statement?: { items: StatementItem[]; total: number };
     page?: number;
     pageSize?: number;
     openDeposit?: any;
   };
 
+  export let form:
+    | {
+        success?: boolean;
+        field?: "username" | "phone" | "bio";
+        message?: string;
+      }
+    | undefined;
+
   const u = data.user ?? {};
   const userProfile = u.profile ?? u.user_profile ?? {};
   const serverProfile = data.profile ?? null;
 
-  let phone: string | null = serverProfile?.phone_e164 ?? null;
-  let phoneVerified = serverProfile?.phone_verified ?? false;
-
-  const displayName = u.name ?? userProfile.full_name ?? userProfile.name;
-
+  const displayName = u.name ?? userProfile.full_name ?? userProfile.name ?? "";
   const email = u.email ?? userProfile.email ?? "";
-
-  let editingPhone = false;
-  let phoneInput = "";
-  let phoneError: string | null = null;
-  let savingPhone = false;
-
-  const handle =
-    userProfile.handle ??
-    userProfile.username ??
-    (email ? `@${email.split("@")[0]}` : "@johnmwangi");
-
-  const bio =
-    userProfile.bio ??
+  const savedUsername = serverProfile?.username ?? userProfile.username ?? null;
+  const fallbackUsername = email ? email.split("@")[0] : "maonimarket";
+  const handle = `@${savedUsername || fallbackUsername}`;
+  const avatarUrl = serverProfile?.avatar_url ?? userProfile.avatar_url ?? null;
+  const phone = serverProfile?.phone_e164 ?? null;
+  const fallbackBio =
     "Avid predictor and market enthusiast. I believe in the power of informed predictions and community intelligence.";
-
+  const savedBio = serverProfile?.bio ?? userProfile.bio ?? null;
   const memberSince = u.created_at
     ? new Date(u.created_at).toLocaleDateString("en-KE", {
         year: "numeric",
@@ -66,305 +61,482 @@
       })
     : "November 2024";
 
-  const initials =
-    (displayName &&
-      displayName
-        .split(" ")
-        .map((p: string) => p[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()) ||
-    "JM";
+  let usernameInput = savedUsername || fallbackUsername;
+  let phoneInput = phone ?? "";
+  const usernamePattern = "[a-z0-9_]{3,24}";
+  let editingUsername = false;
+  let editingPhone = false;
+  let editingBio = false;
+  let bioInput = savedBio || fallbackBio;
 
-  // ----- WALLET / STATEMENT (from portfolio) -----
-  let positions = data.positions;
+  const initialsSource = displayName || savedUsername || email || "Maoni Market";
+  const initials =
+    initialsSource
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .map((part: string) => part[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "MM";
+
   $: statement = data.statement?.items ?? [];
   $: total = data.statement?.total ?? 0;
   $: currentPage = data.page ?? 0;
-  let PAGE_SIZE = data.pageSize ?? 10;
+  const PAGE_SIZE = data.pageSize ?? 10;
 
   let depositOpen = Boolean(data.openDeposit);
-  let depositError: string | null = null;
-  let depositAmount: string | number | null = null;
-
   $: {
     const params = $page.url.searchParams;
-
-    if (params.has("deposit")) {
-      depositOpen = true;
-    }
-
-    const amt = params.get("amount");
-    if (amt) {
-      depositAmount = amt;
-    }
+    if (params.has("deposit")) depositOpen = true;
   }
 
-  const formatKES = (v: number) =>
-    `KES ${new Intl.NumberFormat("en-KE", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(v)}`;
-
-  const formatShortKES = (v: number) =>
-    `KES ${new Intl.NumberFormat("en-KE").format(v)}`;
+  const formatShortKES = (cents: number) =>
+    `KES ${new Intl.NumberFormat("en-KE").format(Math.abs(cents / 100))}`;
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleString("en-KE", {
-      year: "numeric",
+    new Date(iso).toLocaleDateString("en-KE", {
+      day: "numeric",
       month: "short",
-      day: "2-digit",
+      year: "numeric",
     });
+
+  const activityLabel = (kind: string) => {
+    const labels: Record<string, string> = {
+      deposit: "Deposit",
+      bet_lock: "Prediction placed",
+      settlement: "Market payout",
+      settlement_payout: "Market payout",
+      withdrawal: "Withdrawal",
+      withdrawal_request: "Withdrawal request",
+      withdrawal_completed: "Withdrawal sent",
+    };
+
+    return (
+      labels[kind] ??
+      kind
+        .split("_")
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ")
+    );
+  };
+
+  const activityDetail = (item: StatementItem) => {
+    if (item.mpesa_reference) return `M-Pesa ref ${item.mpesa_reference}`;
+    if (item.description) return item.description;
+    if (item.reference_type === "wallet_bet") return "Market prediction";
+    if (item.reference_type === "wallet_deposit") return "Cash deposit";
+    if (item.reference_type === "wallet_withdrawal") return "Cash withdrawal";
+    return "Wallet activity";
+  };
 </script>
 
-<main class="space-y-8">
-  <!-- Header section -->
-  <section
-    class="border-b border-border bg-card/40 -mx-4 md:-mx-6 xl:-mx-8 px-4 md:px-6 xl:px-8 py-8"
-  >
-    <div class="mx-auto w-full max-w-5xl">
+<main class="mx-auto w-full max-w-6xl px-4 py-6 md:px-6">
+  <section class="mb-5 border-b border-dashed border-border/70 pb-5">
+    <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      Account
+    </p>
+    <h1 class="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
+      Profile
+    </h1>
+    <p class="mt-2 max-w-2xl text-sm text-muted-foreground">
+      Manage your public username, M-Pesa phone number, and wallet activity.
+    </p>
+  </section>
+
+  <section class="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
+    <article
+      class="rounded-xl border border-border bg-card p-6 text-center shadow-sm"
+    >
       <div
-        class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        class="mx-auto h-36 w-36 overflow-hidden rounded-full border-[10px] border-muted bg-emerald-600 text-white shadow-sm md:h-44 md:w-44"
       >
-        <div class="flex items-start gap-4">
-          <!-- Avatar -->
+        {#if avatarUrl}
+          <img
+            src={avatarUrl}
+            alt={`${displayName || "Account"} avatar`}
+            class="h-full w-full object-cover"
+            referrerpolicy="no-referrer"
+          />
+        {:else}
           <div
-            class="h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-2xl font-bold text-white"
+            class="flex h-full w-full items-center justify-center text-5xl font-semibold md:text-6xl"
           >
             {initials}
           </div>
-
-          <!-- User info -->
-          <div>
-            <h1 class="text-3xl font-bold text-foreground">
-              {displayName}
-            </h1>
-            <p class="text-muted-foreground mt-1">{handle}</p>
-            <p class="text-xs md:text-sm text-muted-foreground mt-2">
-              Member since {memberSince}
-            </p>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex gap-2">
-          <button
-            type="button"
-            class="inline-flex items-center rounded-md border border-border bg-transparent px-3 py-2 text-xs md:text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
-          >
-            <ArrowUpRight class="mr-2 h-4 w-4" />
-            Share Profile
-          </button>
-
-          <button
-            type="button"
-            class="inline-flex items-center rounded-md border border-border bg-transparent px-3 py-2 text-xs md:text-sm text-foreground hover:bg-accent hover:text-accent-foreground"
-            aria-label="Settings"
-          >
-            <Settings class="h-4 w-4" />
-          </button>
-        </div>
+        {/if}
       </div>
 
-      <!-- Bio -->
-      <p class="mt-6 text-sm md:text-base text-muted-foreground max-w-2xl">
-        {bio}
-      </p>
+      <h2 class="mt-5 break-words text-2xl font-semibold">
+        {displayName || "MaoniMarket user"}
+      </h2>
+      <p class="mt-1 text-sm text-muted-foreground">{handle}</p>
+      <span
+        class="mt-3 inline-flex rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+      >
+        Active account
+      </span>
 
-      <!-- Profile details row (email / phone) -->
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-        <div
-          class="rounded-lg border border-border bg-card/60 px-4 py-3 flex items-center gap-3"
-        >
-          <div
-            class="h-8 w-8 flex items-center justify-center rounded-md bg-muted text-muted-foreground"
-          >
-            <Mail class="h-4 w-4" />
+      <div class="mt-6 border-t border-border/60 pt-5 text-left">
+        <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Member since
+        </p>
+        <p class="mt-1 text-sm font-medium">{memberSince}</p>
+      </div>
+    </article>
+
+    <article class="rounded-xl border border-border bg-card shadow-sm">
+      <div class="flex items-start justify-between gap-3 border-b border-border/60 p-5">
+        <div>
+          <h2 class="text-lg font-semibold">Account details</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Keep your trading identity and payout phone current.
+          </p>
+        </div>
+        <span class="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"></span>
+      </div>
+
+      <div class="divide-y divide-border/60 p-5">
+        <div class="grid gap-4 py-4 first:pt-0 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
+          <div class="rounded-md bg-muted p-3 text-muted-foreground">
+            <Mail class="h-5 w-5" />
           </div>
           <div class="min-w-0">
-            <p
-              class="text-[11px] uppercase tracking-wide text-muted-foreground"
-            >
-              Email
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Google email
             </p>
-            <p class="truncate text-foreground">
-              {email || "Not set"}
+            <p class="mt-1 truncate text-sm font-semibold">{email || "Not set"}</p>
+            <p class="mt-2 text-xs text-muted-foreground">
+              Managed by Google sign-in.
             </p>
           </div>
         </div>
 
-        <div
-          class="rounded-lg border border-border bg-card/60 px-4 py-3 flex items-center gap-3"
-        >
-          <div
-            class="h-8 w-8 flex items-center justify-center rounded-md bg-muted text-muted-foreground"
-          >
-            <Phone class="h-4 w-4" />
+        <div class="grid gap-4 py-4 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
+          <div class="rounded-md bg-muted p-3 text-muted-foreground">
+            <UserRound class="h-5 w-5" />
           </div>
-
-          <div class="min-w-0 flex-1">
-            <p
-              class="text-[11px] uppercase tracking-wide text-muted-foreground"
-            >
-              Phone
+          <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Username
+            </p>
+            <p class="mt-1 truncate text-sm font-semibold">
+              @{savedUsername || fallbackUsername}
             </p>
 
+            {#if editingUsername}
+              <form method="POST" action="?/username" class="mt-3 space-y-3">
+                <label class="block">
+                  <span class="sr-only">Username</span>
+                  <div
+                    class="flex max-w-md items-center rounded-md border border-border bg-input focus-within:ring-2 focus-within:ring-ring"
+                  >
+                    <span class="pl-3 text-sm text-muted-foreground">@</span>
+                    <input
+                      name="username"
+                      bind:value={usernameInput}
+                      class="min-w-0 flex-1 bg-transparent px-1 py-2.5 text-sm outline-none"
+                      pattern={usernamePattern}
+                      maxlength="24"
+                      autocomplete="username"
+                      required
+                    />
+                  </div>
+                  <span class="mt-1 block text-[11px] text-muted-foreground">
+                    3-24 lowercase letters, numbers, or underscore.
+                  </span>
+                </label>
+
+                {#if form?.message && form.field === "username"}
+                  <p
+                    class={`max-w-md rounded-md border px-3 py-2 text-xs ${
+                      form.success
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {form.message}
+                  </p>
+                {/if}
+
+                <div class="grid max-w-md grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-border px-3 py-2.5 text-sm font-medium transition hover:bg-accent"
+                    onclick={() => (editingUsername = false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="rounded-md border border-primary bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            {/if}
+          </div>
+          <button
+            type="button"
+            class="w-fit rounded-md border border-border px-3 py-1.5 text-xs transition hover:bg-accent"
+            onclick={() => {
+              usernameInput = savedUsername || fallbackUsername;
+              editingUsername = true;
+            }}
+          >
+            Edit
+          </button>
+        </div>
+
+        <div class="grid gap-4 py-4 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
+          <div class="rounded-md bg-muted p-3 text-muted-foreground">
+            <Phone class="h-5 w-5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              M-Pesa phone
+            </p>
+            <p class="mt-1 truncate text-sm font-semibold">{phone || "Not set"}</p>
+
             {#if editingPhone}
-              <form method="POST">
-                <div class="mt-1 space-y-2">
+              <form method="POST" action="?/phone" class="mt-3 space-y-3">
+                <label class="block">
+                  <span class="sr-only">Phone</span>
                   <input
-                    type="text"
                     name="phone"
                     bind:value={phoneInput}
                     placeholder="+2547XXXXXXXX"
-                    class="w-full rounded-md border border-border bg-input px-3 py-2 text-sm"
+                    class="w-full max-w-md rounded-md border border-border bg-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
                     required
                   />
+                </label>
 
-                  <div class="flex gap-2">
-                    <button
-                      type="submit"
-                      class="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground"
-                    >
-                      Save
-                    </button>
+                {#if form?.message && form.field === "phone"}
+                  <p
+                    class={`max-w-md rounded-md border px-3 py-2 text-xs ${
+                      form.success
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {form.message}
+                  </p>
+                {/if}
 
-                    <button
-                      type="button"
-                      on:click={() => (editingPhone = false)}
-                      class="rounded-md border border-border px-3 py-1.5 text-xs"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                <div class="grid max-w-md grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-border px-3 py-2.5 text-sm font-medium transition hover:bg-accent"
+                    onclick={() => (editingPhone = false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="rounded-md border border-primary bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+                  >
+                    Save
+                  </button>
                 </div>
               </form>
-            {:else}
-              <div class="flex items-center justify-between">
-                <p class="truncate text-foreground">
-                  {phone ?? "Not set"}
-                </p>
-
-                <button
-                  type="button"
-                  on:click={() => {
-                    phoneInput = phone ?? "";
-                    editingPhone = true;
-                  }}
-                  class="text-xs text-primary hover:underline"
-                >
-                  {phone ? "Edit" : "Add"}
-                </button>
-              </div>
             {/if}
           </div>
+          <button
+            type="button"
+            class="w-fit rounded-md border border-border px-3 py-1.5 text-xs transition hover:bg-accent"
+            onclick={() => {
+              phoneInput = phone ?? "";
+              editingPhone = true;
+            }}
+          >
+            {phone ? "Edit" : "Add"}
+          </button>
         </div>
-      </div>
-    </div>
-  </section>
 
-  <!-- Transaction / prediction history -->
-  <section class="-mx-4 md:-mx-6 xl:-mx-8 px-4 md:px-6 xl:px-8 pb-8">
-    <div class="mx-auto w-full max-w-5xl">
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold">Wallet statement</h2>
-        </div>
-
-        {#if !statement || statement.length === 0}
-          <p class="text-sm text-muted-foreground">
-            No transactions yet. Deposits and settlements will appear here.
-          </p>
-        {:else}
-          <div class="overflow-x-auto rounded-lg border border-border">
-            <table class="min-w-full text-sm">
-              <thead class="bg-card/60">
-                <tr class="text-left">
-                  <th class="px-3 py-2 font-medium">Date</th>
-                  <th class="px-3 py-2 font-medium">Type</th>
-                  <th class="px-3 py-2 font-medium">Reference</th>
-                  <th class="px-3 py-2 font-medium text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each statement as item (item.id)}
-                  <tr class="border-t border-border hover:bg-muted/40">
-                    <td class="px-3 py-2">
-                      <span class="text-xs text-muted-foreground">
-                        {formatDate(item.created_at)}
-                      </span>
-                    </td>
-
-                    <td class="px-3 py-2">
-                      <span class="text-sm font-medium">
-                        {item.kind}
-                      </span>
-                    </td>
-
-                    <td class="px-3 py-2">
-                      {#if item.mpesa_reference}
-                        <span class="text-xs text-muted-foreground">
-                          MPESA: {item.mpesa_reference}
-                        </span>
-                      {:else}
-                        <span class="text-xs text-muted-foreground"> — </span>
-                      {/if}
-                    </td>
-
-                    <td class="px-3 py-2 text-right">
-                      <span
-                        class="font-semibold {item.direction === 'in'
-                          ? 'text-emerald-500'
-                          : 'text-red-500'}"
-                      >
-                        {item.direction === "in" ? "+" : "-"}
-                        {formatShortKES(
-                          Math.abs(item.signed_amount_cents / 100),
-                        )}
-                      </span>
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+        <div class="grid gap-4 py-4 last:pb-0 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
+          <div class="rounded-md bg-muted p-3 text-muted-foreground">
+            <MessageSquareText class="h-5 w-5" />
           </div>
+          <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Public profile
+            </p>
+            <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {savedBio || fallbackBio}
+            </p>
 
-          <!-- PAGINATION STARTS HERE -->
-          {#if total > PAGE_SIZE}
-            <div class="mt-4 flex items-center justify-between text-sm">
-              <a
-                href={`?page=${Math.max(0, currentPage - 1)}`}
-                data-sveltekit-noscroll
-                class="rounded-md border px-3 py-1 {currentPage === 0
-                  ? 'opacity-40 pointer-events-none'
-                  : ''}"
-              >
-                Previous
-              </a>
+            {#if editingBio}
+              <form method="POST" action="?/bio" class="mt-3 max-w-2xl space-y-3">
+                <textarea
+                  name="bio"
+                  bind:value={bioInput}
+                  maxlength="280"
+                  rows="4"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                ></textarea>
+                <div class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                  <span>Keep it short. This will be public later.</span>
+                  <span>{bioInput.length}/280</span>
+                </div>
+                {#if form?.message && form.field === "bio"}
+                  <p
+                    class={`rounded-md border px-3 py-2 text-xs ${
+                      form.success
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                        : "border-red-500/30 bg-red-500/10 text-red-500"
+                    }`}
+                  >
+                    {form.message}
+                  </p>
+                {/if}
+                <div class="grid max-w-md grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-border px-3 py-2.5 text-sm font-medium transition hover:bg-accent"
+                    onclick={() => {
+                      bioInput = savedBio || fallbackBio;
+                      editingBio = false;
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="rounded-md border border-primary bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            {/if}
 
-              <span class="text-muted-foreground">
-                Page {currentPage + 1}
-              </span>
-
-              <a
-                href={`?page=${currentPage + 1}`}
-                data-sveltekit-noscroll
-                class="rounded-md border px-3 py-1 {(currentPage + 1) *
-                  PAGE_SIZE >=
-                total
-                  ? 'opacity-40 pointer-events-none'
-                  : ''}"
-              >
-                Next
-              </a>
-            </div>
-          {/if}
-          <!-- PAGINATION ENDS HERE -->
-        {/if}
+            <p class="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Public profile text is a placeholder for the future market social
+              layer and is not yet shown to other users.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="w-fit rounded-md border border-border px-3 py-1.5 text-xs transition hover:bg-accent"
+            onclick={() => {
+              bioInput = savedBio || fallbackBio;
+              editingBio = true;
+            }}
+          >
+            Edit
+          </button>
+        </div>
       </div>
-    </div>
+    </article>
   </section>
 
-  <!-- Deposit modal -->
+  <section class="mt-5 rounded-xl border border-border bg-card shadow-sm">
+    <div class="border-b border-border/60 p-5">
+      <h2 class="text-lg font-semibold">Wallet statement</h2>
+      <p class="mt-1 text-sm text-muted-foreground">
+        Deposits, predictions, payouts, and withdrawals from your wallet.
+      </p>
+    </div>
+
+    {#if !statement || statement.length === 0}
+      <div class="p-5 text-sm text-muted-foreground">
+        Your wallet activity will appear here.
+      </div>
+    {:else}
+      <div class="hidden overflow-x-auto md:block">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Activity</th>
+              <th>Details</th>
+              <th class="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each statement as item (item.id)}
+              <tr>
+                <td class="whitespace-nowrap text-muted-foreground">
+                  {formatDate(item.created_at)}
+                </td>
+                <td class="font-medium">{activityLabel(item.kind)}</td>
+                <td class="text-muted-foreground">
+                  {activityDetail(item)}
+                </td>
+                <td class="text-right">
+                  <span
+                    class={`font-semibold ${
+                      item.direction === "in"
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
+                    }`}
+                  >
+                    {item.direction === "in" ? "+" : "-"}
+                    {formatShortKES(item.signed_amount_cents)}
+                  </span>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="divide-y divide-border/60 md:hidden">
+        {#each statement as item (item.id)}
+          <article class="p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-medium">{activityLabel(item.kind)}</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  {formatDate(item.created_at)}
+                </p>
+              </div>
+              <p
+                class={`shrink-0 font-semibold ${
+                  item.direction === "in"
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {item.direction === "in" ? "+" : "-"}
+                {formatShortKES(item.signed_amount_cents)}
+              </p>
+            </div>
+            <p class="mt-3 text-sm text-muted-foreground">
+              {activityDetail(item)}
+            </p>
+          </article>
+        {/each}
+      </div>
+
+      {#if total > PAGE_SIZE}
+        <div class="flex items-center justify-between border-t border-border/60 p-4 text-sm">
+          <a
+            href={`?page=${Math.max(0, currentPage - 1)}`}
+            data-sveltekit-noscroll
+            class={`admin-button ${currentPage === 0 ? "pointer-events-none opacity-40" : ""}`}
+          >
+            Previous
+          </a>
+
+          <span class="text-muted-foreground">Page {currentPage + 1}</span>
+
+          <a
+            href={`?page=${currentPage + 1}`}
+            data-sveltekit-noscroll
+            class={`admin-button ${
+              (currentPage + 1) * PAGE_SIZE >= total
+                ? "pointer-events-none opacity-40"
+                : ""
+            }`}
+          >
+            Next
+          </a>
+        </div>
+      {/if}
+    {/if}
+  </section>
+
   <DepositModal open={depositOpen} on:close={() => (depositOpen = false)} />
 </main>

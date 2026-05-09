@@ -202,6 +202,9 @@ export const Profile = {
       user_id: string;
       phone_e164: string | null;
       phone_verified: boolean;
+      username: string | null;
+      avatar_url: string | null;
+      bio: string | null;
     }>("/profile/me"),
 
   setPhone: (phone_e164: string) =>
@@ -209,8 +212,24 @@ export const Profile = {
       user_id: string;
       phone_e164: string | null;
       phone_verified: boolean;
+      username: string | null;
+      avatar_url: string | null;
+      bio: string | null;
     }>("/profile/phone", {
       method: "PUT",
       body: JSON.stringify({ phone_e164 }),
+    }),
+
+  update: (payload: { username?: string; phone_e164?: string; bio?: string }) =>
+    j<{
+      user_id: string;
+      phone_e164: string | null;
+      phone_verified: boolean;
+      username: string | null;
+      avatar_url: string | null;
+      bio: string | null;
+    }>("/profile/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
     }),
 };

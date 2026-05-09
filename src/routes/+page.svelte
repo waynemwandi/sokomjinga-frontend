@@ -526,9 +526,9 @@
           <span class="font-semibold">MaoniMarket</span>
         </a>
         <p class="text-xs pt-2 text-muted-foreground leading-relaxed">
-          MaoniMarket is a real-money sentiment market platform. Markets reflect
-          participant opinion and are not financial advice or investment
-          products.
+          MaoniMarket Ltd. is Kenya’s prediction market platform for sports,
+          politics, culture and public sentiment. Markets reflect participant
+          opinion and should not be interpreted as financial advice.
         </p>
       </div>
 
