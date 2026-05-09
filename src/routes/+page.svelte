@@ -284,15 +284,15 @@
 <!-- primary nav row (categories) -->
 <div class="border-t border-border/60">
   <div
-    class="mx-auto w-full max-w-[1400px] px-4 md:px-6 h-12 flex items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none"
+    class="home-category-bar mx-auto w-full max-w-[1400px] px-4 md:px-6"
   >
     {#each categories as c}
       <button
-        class={`shrink-0 rounded-md px-3 py-1.5 text-sm transition
+        class={`home-category-tab
         ${
           activeCategory === c
-            ? "bg-primary/15 text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            ? "home-category-tab-active"
+            : "home-category-tab-idle"
         }`}
         onclick={() =>
           goto(
@@ -315,9 +315,9 @@
     </div>
   {/if}
   {#if activeCategory !== "All markets" && filteredMarkets.length === 0}
-    <div class="mt-10 rounded-xl border border-border/60 bg-card/40 px-6 py-16">
+    <div class="empty-market-state">
       <div class="flex flex-col items-center justify-center text-center">
-        <h2 class="text-xl font-semibold mb-2">
+        <h2 class="text-xl font-semibold tracking-tight mb-2">
           No markets yet in {activeCategory}
         </h2>
 
@@ -338,28 +338,25 @@
     </div>
   {:else}
     <div
-      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"
+      class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5"
     >
       {#each visibleMarkets as m (m.id)}
         <article
-          class={`group rounded-xl border bg-card/80 shadow-sm
-            transition-all duration-200 hover:-translate-y-1 hover:shadow-lg
+          class={`market-card group
             ${
               isClosingSoon(m)
-                ? "border-amber-400/60 ring-amber-400/30"
-                : "border-border/70 hover:border-primary/40"
+                ? "market-card-alert"
+                : ""
             }`}
         >
-          <a href={`/market/${encodeURIComponent(m.id)}`} class="block">
+          <a
+            href={`/market/${encodeURIComponent(m.id)}`}
+            class="market-card-link"
+          >
             <!-- HEADER -->
-            <div
-              class="p-4 lg:p-5 flex items-start gap-4 border-b border-border/60"
-            >
+            <div class="market-card-header">
               <!-- Thumbnail -->
-              <div
-                class="h-12 w-12 shrink-0 rounded bg-muted/60 overflow-hidden
-                  flex items-center justify-center text-xs"
-              >
+              <div class="market-thumb">
                 {#if m.image_url}
                   <img
                     src={m.image_url}
@@ -367,57 +364,38 @@
                     class="h-full w-full object-cover"
                   />
                 {:else}
-                  {m.title?.slice(0, 2)?.toUpperCase() ?? "MK"}
+                  <span class="market-thumb-fallback">
+                    {m.title?.slice(0, 2)?.toUpperCase() ?? "MK"}
+                  </span>
                 {/if}
               </div>
 
               <!-- Title + meta -->
               <div class="min-w-0 flex-1">
-                <div class="relative group">
-                  <h3
-                    class="text-sm font-semibold leading-snug overflow-hidden"
-                    style="
-                      display: -webkit-box;
-                      -webkit-line-clamp: 3;
-                      -webkit-box-orient: vertical;
-                    "
-                  >
-                    {m.title}
-                  </h3>
+                <h3 class="market-title">
+                  {m.title}
+                </h3>
 
-                  <!-- Hover reveal -->
-                  <div
-                    class="pointer-events-none absolute z-20 hidden group-hover:block top-full mt-2 w-[280px]
-                      rounded-md bg-background border border-border p-3 text-sm shadow-lg"
-                  >
-                    {m.title}
-                  </div>
-                </div>
-
-                <span
-                  class={`mt-1 inline-flex items-center rounded-md border px-2 py-0.5 text-[11px]
-                ${statusMeta(m).cls}`}
-                >
-                  {statusMeta(m).label}
-                </span>
-
-                {#if m.category}
-                  <span
-                    class="ml-1 inline-flex items-center rounded-md border border-border
-                      px-2 py-0.5 text-[11px] bg-primary/10 text-primary"
-                  >
-                    {m.category}
+                <div class="market-chip-row">
+                  <span class={`market-chip ${statusMeta(m).cls}`}>
+                    {statusMeta(m).label}
                   </span>
-                {/if}
+
+                  {#if m.category}
+                    <span class="market-chip market-chip-category">
+                      {m.category}
+                    </span>
+                  {/if}
+                </div>
               </div>
 
               <!-- Gauge -->
-              <div class="relative h-12 w-20 shrink-0">
+              <div class="market-gauge">
                 <svg viewBox="0 0 100 50" class="w-full h-full">
                   <path
                     d="M 10 50 A 40 40 0 0 1 90 50"
                     fill="none"
-                    stroke="rgba(148,163,184,0.25)"
+                    class="market-gauge-track"
                     stroke-width="6"
                     stroke-linecap="round"
                   />
@@ -426,26 +404,24 @@
                     fill="none"
                     stroke-linecap="round"
                     stroke-width="6"
+                    class="market-gauge-fill"
                     style={`stroke: ${gaugeColor(m)};
                           stroke-dasharray: ${GAUGE_LENGTH};
                           stroke-dashoffset: ${gaugeDashOffset(chanceOf(m))};`}
                   />
                 </svg>
 
-                <div
-                  class="absolute inset-0 flex flex-col items-center
-                       justify-center translate-y-[18px]"
-                >
-                  <div class="text-[14px] font-semibold">
+                <div class="market-gauge-label">
+                  <div class="market-gauge-value">
                     {chanceOf(m) ?? FALLBACK_CHANCE}%
                   </div>
-                  <span class="text-[11px] text-muted-foreground">chance</span>
+                  <span class="market-gauge-caption">chance</span>
                 </div>
               </div>
             </div>
 
             <!-- ACTIONS -->
-            <div class="px-4 lg:px-5 pt-3 pb-4">
+            <div class="market-actions">
               <div class="grid grid-cols-2 gap-3">
                 <button
                   class="btn btn-yes"
@@ -470,15 +446,13 @@
             </div>
 
             <!-- FOOTER -->
-            <div
-              class="px-4 lg:px-5 pb-4 pt-3 flex flex-col text-xs text-muted-foreground"
-            >
+            <div class="market-footer">
               <div class="flex items-center">
-                <span class="flex-1 font-medium text-foreground/80">
+                <span class="flex-1 font-semibold text-foreground/85">
                   {volLabel(m)}
                 </span>
 
-                <div class="flex items-center gap-2 opacity-70">
+                <div class="market-footer-icons">
                   <Gift class="h-4 w-4" />
                   <Bookmark class="h-4 w-4" />
                 </div>

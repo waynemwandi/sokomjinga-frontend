@@ -63,13 +63,13 @@
   --gauge-track: oklch(0.9 0 0); /* ring background */
   --gauge-fill: var(--yes); /* donut uses the YES hue by default */
   /* YES / NO: brighter bg with readable ink */
-  --yes-bg: oklch(79.868% 0.20577 151.79);
-  --yes-ink: oklch(0.22 0.06 160);
-  --yes-border: oklch(0.78 0.12 160);
+  --yes-bg: oklch(0.77 0.2 151.79);
+  --yes-ink: oklch(0.18 0.06 160);
+  --yes-border: oklch(0.7 0.13 160);
 
-  --no-bg: oklch(79.868% 0.12 23);
-  --no-ink: oklch(0.22 0.08 23);
-  --no-border: oklch(0.8 0.14 23);
+  --no-bg: oklch(0.81 0.105 23);
+  --no-ink: oklch(0.2 0.08 23);
+  --no-border: oklch(0.73 0.12 23);
 
   /* Gauge colors */
   --gauge-track: oklch(0.9 0 0);
@@ -128,11 +128,11 @@
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --yes-bg: oklch(0.4 0.1 160);
+  --yes-bg: oklch(0.38 0.1 160);
   --yes-ink: oklch(0.96 0.03 160);
   --yes-border: oklch(0.55 0.12 160);
 
-  --no-bg: oklch(0.42 0.13 23);
+  --no-bg: oklch(0.4 0.12 23);
   --no-ink: oklch(0.98 0.04 23);
   --no-border: oklch(0.58 0.16 23);
 
@@ -208,7 +208,7 @@
 
   /* Buttons */
   .btn {
-    @apply rounded-md border px-3 py-2.5 text-sm transition-colors;
+    @apply rounded-md border px-3 py-2.5 text-sm transition-all duration-150;
   }
 
   .admin-panel {
@@ -251,34 +251,151 @@
     @apply divide-y divide-border/60;
   }
 
+  .home-category-bar {
+    @apply flex h-12 items-center gap-3 overflow-x-auto whitespace-nowrap;
+  }
+
+  .home-category-tab {
+    @apply shrink-0 rounded-md border border-transparent px-3 py-1.5 text-sm transition-colors;
+  }
+
+  .home-category-tab-active {
+    @apply border-border bg-accent text-foreground shadow-sm;
+  }
+
+  .home-category-tab-idle {
+    @apply text-muted-foreground hover:bg-accent/70 hover:text-foreground;
+  }
+
+  .empty-market-state {
+    @apply mt-8 rounded-xl border border-border/70 bg-card px-6 py-14 shadow-sm md:mt-10 md:py-20;
+  }
+
+  .market-card {
+    @apply overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm transition-colors duration-200;
+    box-shadow:
+      0 1px 2px color-mix(in oklch, var(--foreground) 8%, transparent),
+      0 10px 24px color-mix(in oklch, var(--foreground) 4%, transparent);
+  }
+
+  .market-card:hover {
+    @apply border-primary/35;
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 6px color-mix(in oklch, var(--foreground) 11%, transparent),
+      0 16px 34px color-mix(in oklch, var(--foreground) 7%, transparent);
+  }
+
+  .market-card-alert {
+    @apply border-amber-400/60 ring-1 ring-amber-400/20;
+  }
+
+  .market-card-link {
+    @apply block h-full;
+  }
+
+  .market-card-header {
+    @apply flex items-start gap-3 border-b border-border/55 p-4;
+  }
+
+  .market-thumb {
+    @apply flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/50 bg-muted/70 text-xs;
+  }
+
+  .market-thumb-fallback {
+    @apply font-semibold text-muted-foreground;
+  }
+
+  .market-title {
+    @apply overflow-hidden text-[0.95rem] font-bold leading-snug tracking-tight text-foreground;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow-wrap: anywhere;
+  }
+
+  .market-chip-row {
+    @apply mt-1.5 flex flex-wrap items-center gap-1.5;
+  }
+
+  .market-chip {
+    @apply inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] leading-none;
+  }
+
+  .market-chip-category {
+    @apply border-border/70 bg-muted text-muted-foreground;
+  }
+
+  .market-gauge {
+    @apply relative h-12 w-20 shrink-0;
+  }
+
+  .market-gauge-track {
+    stroke: color-mix(in oklch, var(--muted-foreground) 20%, transparent);
+  }
+
+  .market-gauge-fill {
+    transition: stroke-dashoffset 420ms ease, stroke 200ms ease;
+  }
+
+  .market-gauge-label {
+    @apply absolute inset-0 flex translate-y-[18px] flex-col items-center justify-center;
+  }
+
+  .market-gauge-value {
+    @apply text-[14px] font-bold leading-none;
+  }
+
+  .market-gauge-caption {
+    @apply mt-0.5 text-[11px] text-muted-foreground;
+  }
+
+  .market-actions {
+    @apply px-4 pb-3 pt-3;
+  }
+
+  .market-footer {
+    @apply flex flex-col px-4 pb-4 pt-3 text-xs text-muted-foreground;
+  }
+
+  .market-footer-icons {
+    @apply flex items-center gap-2 text-muted-foreground/70 transition-colors;
+  }
+
+  .market-card:hover .market-footer-icons {
+    @apply text-muted-foreground;
+  }
+
   .btn-yes {
     background-color: var(--yes-bg);
     color: var(--yes-ink);
-    border-color: color-mix(in oklch, var(--yes-bg) 0%, black 20%);
+    border-color: var(--yes-border);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, white 18%, transparent);
   }
   .btn-yes:hover {
-    background-color: color-mix(in oklch, var(--yes-bg) 85%, white 15%);
+    background-color: color-mix(in oklch, var(--yes-bg) 88%, black 12%);
   }
   .dark .btn-yes {
     border-color: var(--yes-border);
   }
   .dark .btn-yes:hover {
-    background-color: color-mix(in oklch, var(--yes-bg) 70%, white 30%);
+    background-color: color-mix(in oklch, var(--yes-bg) 82%, white 18%);
   }
 
   .btn-no {
     background-color: var(--no-bg);
     color: var(--no-ink);
-    border-color: color-mix(in oklch, var(--no-bg) 0%, black 20%);
+    border-color: var(--no-border);
+    box-shadow: inset 0 1px 0 color-mix(in oklch, white 20%, transparent);
   }
   .btn-no:hover {
-    background-color: color-mix(in oklch, var(--no-bg) 85%, white 15%);
+    background-color: color-mix(in oklch, var(--no-bg) 90%, black 10%);
   }
   .dark .btn-no {
     border-color: var(--no-border);
   }
   .dark .btn-no:hover {
-    background-color: color-mix(in oklch, var(--no-bg) 70%, white 30%);
+    background-color: color-mix(in oklch, var(--no-bg) 82%, white 18%);
   }
 
   /* Donut gauge — OKLCH-safe */
@@ -375,4 +492,37 @@ html::-webkit-scrollbar-thumb:hover {
 
 .animate-slide-up {
   animation: slide-up 0.2s ease-out;
+}
+
+@media (max-width: 640px) {
+  .market-card-header {
+    @apply gap-3 p-3.5;
+  }
+
+  .market-title {
+    @apply text-sm;
+    -webkit-line-clamp: 4;
+  }
+
+  .market-actions {
+    @apply px-3.5 pb-3 pt-2.5;
+  }
+
+  .market-footer {
+    @apply px-3.5 pb-3.5 pt-2.5;
+  }
+
+  .empty-market-state {
+    @apply mt-6 px-5 py-12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-card,
+  .market-card:hover,
+  .market-gauge-fill,
+  .btn {
+    transition: none;
+    transform: none;
+  }
 }
