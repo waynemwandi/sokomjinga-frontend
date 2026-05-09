@@ -1,6 +1,6 @@
 <!-- src/routes/(app)/portfolio/+page.svelte -->
 <script lang="ts">
-  import { goto } from "$app/navigation";
+  import { goto, invalidateAll } from "$app/navigation";
   import type { PageData } from "./$types";
   import {
     TrendingUp,
@@ -736,12 +736,12 @@
       depositOpen = false;
       if (data.openDeposit) goto("/portfolio");
     }}
-    on:success={() => goto("/portfolio")}
+    on:success={() => invalidateAll()}
   />
   <WithdrawalModal
     open={withdrawalOpen}
     balanceCents={data.wallet?.balance_cents ?? 0}
     on:close={() => (withdrawalOpen = false)}
-    on:success={() => goto("/portfolio")}
+    on:success={() => invalidateAll()}
   />
 </main>

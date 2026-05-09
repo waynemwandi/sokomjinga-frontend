@@ -1,6 +1,7 @@
 <!-- src/routes/(app)/account/+page.svelte -->
 <script lang="ts">
   import { page } from "$app/stores";
+  import { invalidateAll } from "$app/navigation";
   import { Mail, MessageSquareText, Phone, UserRound } from "lucide-svelte";
   import DepositModal from "$lib/components/wallet/DepositModal.svelte";
 
@@ -94,21 +95,24 @@
     `KES ${new Intl.NumberFormat("en-KE").format(Math.abs(cents / 100))}`;
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-KE", {
+    Number.isNaN(new Date(iso).getTime())
+      ? "Date unavailable"
+      : new Date(iso).toLocaleDateString("en-KE", {
       day: "numeric",
       month: "short",
       year: "numeric",
-    });
+        });
 
   const activityLabel = (kind: string) => {
     const labels: Record<string, string> = {
       deposit: "Deposit",
       bet_lock: "Prediction placed",
-      settlement: "Market payout",
       settlement_payout: "Market payout",
+      settlement_fee: "Platform fee",
       withdrawal: "Withdrawal",
       withdrawal_request: "Withdrawal request",
       withdrawal_completed: "Withdrawal sent",
+      withdrawal_rejected: "Withdrawal returned",
     };
 
     return (
@@ -122,8 +126,16 @@
   };
 
   const activityDetail = (item: StatementItem) => {
-    if (item.mpesa_reference) return `M-Pesa ref ${item.mpesa_reference}`;
+    if (item.kind === "deposit" && item.mpesa_reference) {
+      return `M-Pesa ref ${item.mpesa_reference}`;
+    }
     if (item.description) return item.description;
+    if (item.kind === "deposit") return "Cash added to your wallet";
+    if (item.kind === "bet_lock") return "Prediction amount placed";
+    if (item.kind === "settlement_payout") return "Winnings paid into your wallet";
+    if (item.kind === "withdrawal") return "Cash sent to your M-Pesa number";
+    if (item.kind === "withdrawal_request") return "Withdrawal request received";
+    if (item.kind === "withdrawal_rejected") return "Funds returned to your wallet";
     if (item.reference_type === "wallet_bet") return "Market prediction";
     if (item.reference_type === "wallet_deposit") return "Cash deposit";
     if (item.reference_type === "wallet_withdrawal") return "Cash withdrawal";
@@ -197,6 +209,75 @@
       </div>
 
       <div class="divide-y divide-border/60 p-5">
+        <div class="grid gap-4 py-4 first:pt-0 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
+          <div class="rounded-md bg-muted p-3 text-muted-foreground">
+            <MessageSquareText class="h-5 w-5" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Public profile
+            </p>
+            <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
+              {savedBio || fallbackBio}
+            </p>
+
+            {#if editingBio}
+              <form method="POST" action="?/bio" class="mt-3 max-w-2xl space-y-3">
+                <textarea
+                  name="bio"
+                  bind:value={bioInput}
+                  maxlength="280"
+                  rows="4"
+                  class="w-full rounded-md border border-border bg-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                ></textarea>
+                <div class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                  <span>Keep it short. This will be public later.</span>
+                  <span>{bioInput.length}/280</span>
+                </div>
+                {#if form?.message && form.field === "bio"}
+                  <p
+                    class={`rounded-md border px-3 py-2 text-xs ${
+                      form.success
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                        : "border-red-500/30 bg-red-500/10 text-red-500"
+                    }`}
+                  >
+                    {form.message}
+                  </p>
+                {/if}
+                <div class="grid max-w-md grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="rounded-md border border-border px-3 py-2.5 text-sm font-medium transition hover:bg-accent"
+                    onclick={() => {
+                      bioInput = savedBio || fallbackBio;
+                      editingBio = false;
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="rounded-md border border-primary bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            {/if}
+          </div>
+          <button
+            type="button"
+            class="w-fit rounded-md border border-border px-3 py-1.5 text-xs transition hover:bg-accent"
+            onclick={() => {
+              bioInput = savedBio || fallbackBio;
+              editingBio = true;
+            }}
+          >
+            Edit
+          </button>
+        </div>
+
         <div class="grid gap-4 py-4 first:pt-0 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
           <div class="rounded-md bg-muted p-3 text-muted-foreground">
             <Mail class="h-5 w-5" />
@@ -354,79 +435,6 @@
           </button>
         </div>
 
-        <div class="grid gap-4 py-4 last:pb-0 sm:grid-cols-[44px_minmax(0,1fr)_auto] sm:items-start">
-          <div class="rounded-md bg-muted p-3 text-muted-foreground">
-            <MessageSquareText class="h-5 w-5" />
-          </div>
-          <div class="min-w-0">
-            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Public profile
-            </p>
-            <p class="mt-1 max-w-2xl text-sm text-muted-foreground">
-              {savedBio || fallbackBio}
-            </p>
-
-            {#if editingBio}
-              <form method="POST" action="?/bio" class="mt-3 max-w-2xl space-y-3">
-                <textarea
-                  name="bio"
-                  bind:value={bioInput}
-                  maxlength="280"
-                  rows="4"
-                  class="w-full rounded-md border border-border bg-input px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                ></textarea>
-                <div class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
-                  <span>Keep it short. This will be public later.</span>
-                  <span>{bioInput.length}/280</span>
-                </div>
-                {#if form?.message && form.field === "bio"}
-                  <p
-                    class={`rounded-md border px-3 py-2 text-xs ${
-                      form.success
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
-                        : "border-red-500/30 bg-red-500/10 text-red-500"
-                    }`}
-                  >
-                    {form.message}
-                  </p>
-                {/if}
-                <div class="grid max-w-md grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    class="rounded-md border border-border px-3 py-2.5 text-sm font-medium transition hover:bg-accent"
-                    onclick={() => {
-                      bioInput = savedBio || fallbackBio;
-                      editingBio = false;
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    class="rounded-md border border-primary bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
-                  >
-                    Save
-                  </button>
-                </div>
-              </form>
-            {/if}
-
-            <p class="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-              Public profile text is a placeholder for the future market social
-              layer and is not yet shown to other users.
-            </p>
-          </div>
-          <button
-            type="button"
-            class="w-fit rounded-md border border-border px-3 py-1.5 text-xs transition hover:bg-accent"
-            onclick={() => {
-              bioInput = savedBio || fallbackBio;
-              editingBio = true;
-            }}
-          >
-            Edit
-          </button>
-        </div>
       </div>
     </article>
   </section>
@@ -538,5 +546,9 @@
     {/if}
   </section>
 
-  <DepositModal open={depositOpen} on:close={() => (depositOpen = false)} />
+  <DepositModal
+    open={depositOpen}
+    on:close={() => (depositOpen = false)}
+    on:success={() => invalidateAll()}
+  />
 </main>
