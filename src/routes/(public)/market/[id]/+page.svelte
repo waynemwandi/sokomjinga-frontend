@@ -22,6 +22,9 @@
   let outcomes = $state(data.outcomes ?? []);
   let priceHistory = $state(data.priceHistory);
   let selectedRange = $state<"1H" | "1D" | "1W" | "1M" | "ALL">("ALL");
+  let chartSide = $state<"yes" | "no">(
+    data.initialSide === "no" ? "no" : "yes",
+  );
   let isSubmitting = $state(false);
   let showMobileBuy = $state(false);
 
@@ -106,13 +109,24 @@
     }
   });
 
+  const setActiveSide = (side: "yes" | "no") => {
+    selectedSide = side;
+    chartSide = side;
+
+    const outcome = side === "yes" ? yesOutcome : noOutcome;
+    if (outcome) selectedOutcome = outcome;
+
+    hasFitContent = false;
+    updateChart();
+  };
+
   const selectOutcome = (o: any) => {
     selectedOutcome = o;
 
     if (o === yesOutcome) {
-      selectedSide = "yes";
+      setActiveSide("yes");
     } else if (o === noOutcome) {
-      selectedSide = "no";
+      setActiveSide("no");
     }
   };
 
@@ -148,7 +162,7 @@
   const selectedPricePercent = $derived(
     selectedOutcome ? Math.round(priceOf(selectedOutcome)) : 0,
   );
-  const selectedSideLabel = $derived(selectedSide === "yes" ? "YES" : "NO");
+  const selectedSideLabel = $derived(selectedSide === "yes" ? "Yes" : "No");
   const profitToneClass = $derived(
     profitKES > 0
       ? "text-emerald-500 dark:text-emerald-400"
@@ -198,6 +212,18 @@
 
   const yesPct = $derived(
     yesOutcomeStats ? Math.round(priceOf(yesOutcomeStats)) : null,
+  );
+
+  const noPct = $derived(noOutcome ? Math.round(priceOf(noOutcome)) : null);
+
+  const chartChancePct = $derived(chartSide === "yes" ? yesPct : noPct);
+
+  const chartSideLabel = $derived(chartSide === "yes" ? "Yes" : "No");
+
+  const chartToneClass = $derived(
+    chartSide === "yes"
+      ? "text-emerald-500 dark:text-emerald-400"
+      : "text-red-500 dark:text-red-400",
   );
 
   const volumeKES = $derived(
@@ -316,6 +342,19 @@
   let hasFitContent = false;
   let series: ISeriesApi<"Area"> | null = null;
   let resizeTimeout: ReturnType<typeof setTimeout>;
+  let chartPulse = $state(false);
+
+  const pulseChart = () => {
+    if (!browser) return;
+
+    chartPulse = false;
+    window.requestAnimationFrame(() => {
+      chartPulse = true;
+      window.setTimeout(() => {
+        chartPulse = false;
+      }, 700);
+    });
+  };
 
   const resizeChart = () => {
     if (!chartEl || !chart) return;
@@ -339,13 +378,29 @@
     ),
   );
 
+  const noHistory = $derived(
+    priceHistory?.outcomes?.find((o: any) =>
+      /^(no|false)$/i.test(o.label ?? ""),
+    ),
+  );
+
+  const activeHistoryPoints = $derived.by(() => {
+    if (chartSide === "yes") return yesHistory?.points ?? [];
+    if (noHistory?.points?.length) return noHistory.points;
+
+    return (yesHistory?.points ?? []).map((p: any) => ({
+      ...p,
+      price_cents: 100 - Number(p.price_cents ?? 0),
+    }));
+  });
+
   const deltaPct = $derived(
-    yesHistory?.points?.length
-      ? yesHistory.points.length < 2
+    activeHistoryPoints?.length
+      ? activeHistoryPoints.length < 2
         ? 0
         : Math.round(
-            yesHistory.points[yesHistory.points.length - 1].price_cents -
-              yesHistory.points[yesHistory.points.length - 2].price_cents,
+            activeHistoryPoints[activeHistoryPoints.length - 1].price_cents -
+              activeHistoryPoints[activeHistoryPoints.length - 2].price_cents,
           )
       : null,
   );
@@ -370,9 +425,9 @@
   };
 
   function buildChartData() {
-    if (!yesHistory?.points?.length) return [];
+    if (!activeHistoryPoints?.length) return [];
 
-    const mapped = filterByRange(yesHistory.points, selectedRange)
+    const mapped = filterByRange(activeHistoryPoints, selectedRange)
       .map((p: any, i: number) => ({
         time: (Math.floor(new Date(p.t).getTime() / 1000) + i) as Time,
         value: p.price_cents,
@@ -399,7 +454,21 @@
 
     const data = buildChartData();
 
+    series.applyOptions(
+      chartSide === "yes"
+        ? {
+            lineColor: "#2dd4bf",
+            topColor: "rgba(45,212,191,0.35)",
+            bottomColor: "rgba(45,212,191,0.02)",
+          }
+        : {
+            lineColor: "#ff4d4f",
+            topColor: "rgba(255,77,79,0.28)",
+            bottomColor: "rgba(255,77,79,0.02)",
+          },
+    );
     series.setData(data);
+    pulseChart();
 
     if (!hasFitContent) {
       chart.timeScale().fitContent();
@@ -503,6 +572,10 @@
   });
 
   const isTradable = $derived((market.status ?? "").toLowerCase() === "open");
+
+  const selectChartSide = (side: "yes" | "no") => {
+    setActiveSide(side);
+  };
 </script>
 
 <svelte:head>
@@ -581,17 +654,14 @@
   <div class="mb-6 flex flex-col gap-2">
     <!-- YES chance -->
     <div class="flex items-center gap-3">
-      <div class="text-3xl font-semibold text-primary">
-        {yesPct !== null ? `${yesPct}% chance` : "—"}
+      <div class={`text-3xl font-semibold ${chartToneClass}`}>
+        {chartChancePct !== null
+          ? `${chartChancePct}% ${chartSideLabel} chance`
+          : "—"}
       </div>
-
       <!-- Placeholder uptick -->
       {#if deltaPct !== null}
-        <div
-          class={`flex items-center gap-1 text-sm font-medium ${
-            deltaPct >= 0 ? "text-emerald-400" : "text-red-400"
-          }`}
-        >
+        <div class={`flex items-center gap-1 text-sm font-medium ${chartToneClass}`}>
           <span class="inline-block translate-y-[1px]">
             {deltaPct >= 0 ? "▲" : "▼"}
           </span>
@@ -613,36 +683,69 @@
       <section class="md:col-span-2 space-y-6">
         <!-- Price chart card -->
         <div
-          class="rounded-xl border border-border/50 bg-card text-sm font-medium"
+          class="overflow-hidden rounded-xl border border-border/50 bg-card text-sm font-medium"
         >
-          <div class="h-[320px] md:h-[360px] px-4 pb-4 pt-3">
+          <div class="px-3 pb-3 pt-3 md:px-4 md:pb-4">
             <!-- Range selector -->
-            <div class="flex justify-end gap-2 mb-2">
-              {#each ["1H", "1D", "1W", "1M", "ALL"] as r (r)}
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div class="flex rounded-lg border border-border bg-background/50 p-1">
                 <button
-                  class={`px-2 py-1 text-xs rounded-md border ${
-                    selectedRange === r
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card border-border text-muted-foreground"
+                  class={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                    chartSide === "yes"
+                      ? "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
-                  onclick={() => {
-                    selectedRange = r as typeof selectedRange;
-                    updateChart();
-                  }}
+                  onclick={() => selectChartSide("yes")}
                 >
-                  {r}
+                  Yes {yesPct ?? "—"}%
                 </button>
-              {/each}
+                <button
+                  class={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                    chartSide === "no"
+                      ? "bg-red-500/15 text-red-500 dark:text-red-400"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onclick={() => selectChartSide("no")}
+                >
+                  No {noPct ?? "—"}%
+                </button>
+              </div>
+
+              <div class="flex gap-2">
+                {#each ["1H", "1D", "1W", "1M", "ALL"] as r (r)}
+                  <button
+                    class={`px-2 py-1 text-xs rounded-md border ${
+                      selectedRange === r
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card border-border text-muted-foreground"
+                    }`}
+                    onclick={() => {
+                      selectedRange = r as typeof selectedRange;
+                      hasFitContent = false;
+                      updateChart();
+                    }}
+                  >
+                    {r}
+                  </button>
+                {/each}
+              </div>
             </div>
-            <div class="h-full rounded-lg bg-background/40 p-2 md:p-3">
-              <div class="relative w-full h-[260px] overflow-hidden">
+            <div
+              class={`market-chart-shell h-[240px] rounded-lg bg-background/40 p-2 sm:h-[260px] md:h-[300px] md:p-3 ${
+                chartPulse ? "market-chart-shell-pulse" : ""
+              }`}
+            >
+              <div class="relative h-full w-full overflow-hidden">
                 <div bind:this={chartEl} class="w-full h-full"></div>
 
                 {#if !hasChartData}
                   <div
                     class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
                   >
-                    No data in this range
+                    <span class="text-center">
+                      No chart data yet for {chartSideLabel}.<br />
+                      The line will update as predictions are placed.
+                    </span>
                   </div>
                 {/if}
               </div>
@@ -728,9 +831,7 @@
                     disabled={!isTradable}
                     class={`btn flex flex-col items-center justify-center text-sm
                       ${
-                        selectedOutcome === yesOutcome
-                          ? "btn-yes animate-pulse"
-                          : "bg-card border-border"
+                        selectedOutcome === yesOutcome ? "btn-yes" : "bg-card border-border"
                       }
                       ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
                     `}
@@ -749,9 +850,7 @@
                     disabled={!isTradable}
                     class={`btn flex flex-col items-center justify-center text-sm
                     ${
-                      selectedOutcome === noOutcome
-                        ? "btn-no animate-pulse"
-                        : "bg-card border-border"
+                      selectedOutcome === noOutcome ? "btn-no" : "bg-card border-border"
                     }
                     ${!isTradable ? "opacity-50 cursor-not-allowed" : ""}
                   `}
@@ -999,7 +1098,7 @@
           : "bg-red-500/20 text-red-400 border border-red-500/30"
       }`}
           >
-            {selectedSide === "yes" ? "YES" : "NO"}
+            {selectedSideLabel}
           </div>
         </div>
 
