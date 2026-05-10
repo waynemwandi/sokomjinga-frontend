@@ -35,6 +35,8 @@
   }
 
   async function submit() {
+    if (loading) return;
+
     const amountKes = Number(amount);
     if (!Number.isFinite(amountKes) || amountKes <= 0) {
       error = "Enter a valid amount.";
@@ -163,9 +165,10 @@
             <button
               type="submit"
               disabled={loading || maxWithdrawCents <= 0}
-              class="w-full rounded-xl border border-primary bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
+              class="action-button action-button-primary w-full rounded-xl px-4 py-3"
             >
-              {loading ? "Submitting..." : "Request withdrawal"}
+              {#if loading}<span class="action-spinner"></span>{/if}
+              {loading ? "Requesting..." : "Request withdrawal"}
             </button>
           </form>
         {/if}

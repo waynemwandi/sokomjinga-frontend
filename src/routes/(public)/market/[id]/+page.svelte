@@ -1,4 +1,4 @@
-<!-- src/routes/(public)/market/[id]/+page.svelte -->
+﻿<!-- src/routes/(public)/market/[id]/+page.svelte -->
 
 <script lang="ts">
   import AppHeader from "$lib/components/layout/AppHeader.svelte";
@@ -330,11 +330,11 @@
   const hasVolume = $derived(typeof volumeKES === "number" && volumeKES > 0);
 
   const volumeLabel = $derived(
-    hasVolume ? `${formatCompactKES(volumeKES)} Vol.` : "– Vol.",
+    hasVolume ? `${formatCompactKES(volumeKES)} Vol.` : "â€“ Vol.",
   );
 
   const projectedEndLabel = $derived(
-    projectedEndDate ? `Ends ${projectedEndDate}` : "Ends –",
+    projectedEndDate ? `Ends ${projectedEndDate}` : "Ends â€“",
   );
 
   let chartEl = $state<HTMLDivElement | null>(null);
@@ -657,13 +657,13 @@
       <div class={`text-3xl font-semibold ${chartToneClass}`}>
         {chartChancePct !== null
           ? `${chartChancePct}% ${chartSideLabel} chance`
-          : "—"}
+          : "â€”"}
       </div>
       <!-- Placeholder uptick -->
       {#if deltaPct !== null}
         <div class={`flex items-center gap-1 text-sm font-medium ${chartToneClass}`}>
           <span class="inline-block translate-y-[1px]">
-            {deltaPct >= 0 ? "▲" : "▼"}
+            {deltaPct >= 0 ? "â–²" : "â–¼"}
           </span>
           <span>{Math.abs(deltaPct)}%</span>
         </div>
@@ -697,7 +697,7 @@
                   }`}
                   onclick={() => selectChartSide("yes")}
                 >
-                  Yes {yesPct ?? "—"}%
+                  Yes {yesPct ?? "â€”"}%
                 </button>
                 <button
                   class={`rounded-md px-3 py-1 text-xs font-semibold transition ${
@@ -707,7 +707,7 @@
                   }`}
                   onclick={() => selectChartSide("no")}
                 >
-                  No {noPct ?? "—"}%
+                  No {noPct ?? "â€”"}%
                 </button>
               </div>
 
@@ -783,7 +783,12 @@
           method="POST"
           action="?/buy"
           class="rounded-xl border border-border bg-card overflow-hidden"
-          use:enhance={() => {
+          use:enhance={({ cancel }) => {
+            if (isSubmitting) {
+              cancel();
+              return;
+            }
+
             isSubmitting = true;
 
             return async ({ result }: { result: any }) => {
@@ -996,13 +1001,11 @@
               >
                 {#if isSubmitting}
                   <span class="flex items-center gap-2">
-                    <span
-                      class="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin"
-                    ></span>
+                    <span class="action-spinner"></span>
                     Placing...
                   </span>
                 {:else}
-                  Place order · {formatKES(Number(amountKES || 0))}
+                  Place order - {formatKES(Number(amountKES || 0))}
                 {/if}
               </button>
             {:else}
@@ -1023,32 +1026,32 @@
         <!-- YES -->
         {#if yesOutcome}
           <button
-            class="flex-1 rounded-md py-3 text-sm font-semibold
+            class="flex-1 rounded-lg border py-3 text-sm font-semibold shadow-lg transition-all duration-150 active:scale-[0.98]
           {selectedOutcome === yesOutcome
-              ? 'bg-emerald-600 text-white'
-              : 'bg-emerald-500/20 text-emerald-400'}"
+              ? 'border-emerald-400/60 bg-emerald-600 text-white shadow-emerald-900/40'
+              : 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300 shadow-black/20'}"
             onclick={() => {
               selectOutcome(yesOutcome);
               showMobileBuy = true;
             }}
           >
-            Yes · {Math.round(priceOf(yesOutcome))}%
+            Buy Yes at {Math.round(priceOf(yesOutcome))}%
           </button>
         {/if}
 
         <!-- NO -->
         {#if noOutcome}
           <button
-            class="flex-1 rounded-md py-3 text-sm font-semibold
+            class="flex-1 rounded-lg border py-3 text-sm font-semibold shadow-lg transition-all duration-150 active:scale-[0.98]
           {selectedOutcome === noOutcome
-              ? 'bg-red-600 text-white'
-              : 'bg-red-500/20 text-red-400'}"
+              ? 'border-red-400/60 bg-red-600 text-white shadow-red-950/50'
+              : 'border-red-500/30 bg-red-500/15 text-red-300 shadow-black/20'}"
             onclick={() => {
               selectOutcome(noOutcome);
               showMobileBuy = true;
             }}
           >
-            No · {Math.round(priceOf(noOutcome))}%
+            Buy No at {Math.round(priceOf(noOutcome))}%
           </button>
         {/if}
       </div>
@@ -1073,7 +1076,14 @@
     >
       <!-- header -->
       <div class="flex items-center justify-between">
-        <div class="text-sm font-medium">Buy</div>
+        <div>
+          <div class="text-sm font-semibold">Place your prediction</div>
+          {#if selectedOutcome}
+            <div class="mt-1 text-xs text-muted-foreground">
+              Buying {selectedSideLabel} at {selectedPricePercent}%
+            </div>
+          {/if}
+        </div>
         <button
           class="text-xs text-muted-foreground"
           onclick={() => (showMobileBuy = false)}
@@ -1084,26 +1094,29 @@
 
       <!-- selected outcome -->
       {#if selectedOutcome}
-        <div class="text-xs text-muted-foreground">
+        <div class="line-clamp-2 text-sm font-medium leading-snug">
           {market.title}
         </div>
-        <div class="flex items-center justify-between">
-          <div class="text-xs text-muted-foreground">You are buying</div>
+        <div class="grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl border border-border/70 bg-card p-3">
+          <div>
+            <div class="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Your pick
+            </div>
+            <div class="mt-1 text-sm text-muted-foreground">
+              If {selectedSideLabel} wins, your payout follows the current market pool.
+            </div>
+          </div>
 
           <div
-            class={`px-3 py-1 rounded-full text-xs font-semibold
+            class={`rounded-lg border px-4 py-2 text-sm font-semibold
       ${
         selectedSide === "yes"
-          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-          : "bg-red-500/20 text-red-400 border border-red-500/30"
+          ? "border-emerald-400/50 bg-emerald-600 text-white shadow-lg shadow-emerald-950/40"
+          : "border-red-400/50 bg-red-600 text-white shadow-lg shadow-red-950/50"
       }`}
           >
             {selectedSideLabel}
           </div>
-        </div>
-
-        <div class="text-sm font-medium text-muted-foreground">
-          Current market price: {selectedSideLabel} {selectedPricePercent}%
         </div>
       {/if}
 
@@ -1170,7 +1183,7 @@
       <div class="flex gap-2 justify-center">
         {#each [50, 100, 500, 1000] as amt}
           <button
-            class="bg-input px-3 py-1 rounded text-xs"
+            class="rounded-md border border-border bg-input px-3 py-1.5 text-xs font-medium transition-all active:scale-95"
             onclick={() => (amountKES = amt)}
           >
             KES {amt}
@@ -1182,7 +1195,12 @@
       <form
         method="POST"
         action="?/buy"
-        use:enhance={() => {
+        use:enhance={({ cancel }) => {
+          if (isSubmitting) {
+            cancel();
+            return;
+          }
+
           isSubmitting = true;
 
           return async ({ result }: { result: any }) => {
@@ -1216,12 +1234,13 @@
 
         <button
           type="submit"
-          class="w-full rounded-md bg-primary py-3 text-sm font-medium text-primary-foreground"
+          class="flex w-full items-center justify-center gap-2 rounded-md bg-primary py-3 text-sm font-medium text-primary-foreground disabled:pointer-events-none disabled:opacity-40"
           disabled={Number(amountKES || 0) <= 0 || isSubmitting}
         >
+          {#if isSubmitting}<span class="action-spinner"></span>{/if}
           {isSubmitting
             ? "Placing..."
-            : `Place order · ${formatKES(Number(amountKES || 0))}`}
+            : `Place order - ${formatKES(Number(amountKES || 0))}`}
         </button>
       </form>
     </div>

@@ -44,6 +44,7 @@
   };
 
   async function handleSubmit() {
+    if (state !== "idle") return;
     if (!localAmount || Number(localAmount) <= 0) return;
 
     state = "submitting";
@@ -200,7 +201,8 @@
 
             <button
               type="submit"
-              class="w-full rounded-xl border border-primary bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              disabled={!localAmount || Number(localAmount) <= 0}
+              class="action-button action-button-primary w-full rounded-xl px-4 py-3"
             >
               Send M-Pesa prompt
             </button>

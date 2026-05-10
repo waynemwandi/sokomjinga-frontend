@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { enhance } from "$app/forms";
+
   export let data: {
     withdrawals: {
       id: string;
@@ -27,6 +29,7 @@
   $: total = data.total ?? 0;
   $: totalPages = Math.max(1, Math.ceil(total / pageSize));
   $: totalAmount = withdrawals.reduce((sum, w) => sum + w.amount_cents, 0);
+  let activeWithdrawalAction: string | null = null;
 
   const formatKES = (cents: number) =>
     `KES ${(cents / 100).toLocaleString("en-KE", {
@@ -52,6 +55,25 @@
       hour: "2-digit",
       minute: "2-digit",
     });
+
+  function withdrawalEnhance(id: string, action: string) {
+    return ({ cancel }: { cancel: () => void }) => {
+      if (activeWithdrawalAction) {
+        cancel();
+        return;
+      }
+
+      activeWithdrawalAction = `${id}:${action}`;
+
+      return async ({ update }: { update: () => Promise<void> }) => {
+        try {
+          await update();
+        } finally {
+          activeWithdrawalAction = null;
+        }
+      };
+    };
+  }
 </script>
 
 <div class="space-y-8">
@@ -170,19 +192,34 @@
                 <td class="px-5 py-4">
                   <div class="flex min-w-[380px] flex-wrap justify-end gap-2">
                     {#if w.status === "pending"}
-                      <form method="POST" action="?/updateWithdrawal">
+                      <form
+                        method="POST"
+                        action="?/updateWithdrawal"
+                        use:enhance={withdrawalEnhance(w.id, "processing")}
+                      >
                         <input type="hidden" name="id" value={w.id} />
                         <input type="hidden" name="status" value="processing" />
                         <button
-                          class="rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-500/20 dark:text-blue-300"
+                          disabled={Boolean(activeWithdrawalAction)}
+                          class="action-button border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-500/20 dark:text-blue-300"
                         >
-                          Start
+                          {#if activeWithdrawalAction === `${w.id}:processing`}
+                            <span class="action-spinner"></span>
+                          {/if}
+                          {activeWithdrawalAction === `${w.id}:processing`
+                            ? "Starting..."
+                            : "Start"}
                         </button>
                       </form>
                     {/if}
 
                     {#if w.status === "pending" || w.status === "processing"}
-                      <form method="POST" action="?/updateWithdrawal" class="flex gap-1">
+                      <form
+                        method="POST"
+                        action="?/updateWithdrawal"
+                        class="flex gap-1"
+                        use:enhance={withdrawalEnhance(w.id, "completed")}
+                      >
                         <input type="hidden" name="id" value={w.id} />
                         <input type="hidden" name="status" value="completed" />
                         <input
@@ -191,13 +228,24 @@
                           class="w-32 rounded-md border border-border bg-input px-2 py-1.5 text-xs"
                         />
                         <button
-                          class="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-300"
+                          disabled={Boolean(activeWithdrawalAction)}
+                          class="action-button border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-300"
                         >
-                          Send
+                          {#if activeWithdrawalAction === `${w.id}:completed`}
+                            <span class="action-spinner"></span>
+                          {/if}
+                          {activeWithdrawalAction === `${w.id}:completed`
+                            ? "Sending..."
+                            : "Send"}
                         </button>
                       </form>
 
-                      <form method="POST" action="?/updateWithdrawal" class="flex gap-1">
+                      <form
+                        method="POST"
+                        action="?/updateWithdrawal"
+                        class="flex gap-1"
+                        use:enhance={withdrawalEnhance(w.id, "failed")}
+                      >
                         <input type="hidden" name="id" value={w.id} />
                         <input type="hidden" name="status" value="failed" />
                         <input
@@ -206,9 +254,15 @@
                           class="w-32 rounded-md border border-border bg-input px-2 py-1.5 text-xs"
                         />
                         <button
-                          class="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-600 hover:bg-red-500/20 dark:text-red-300"
+                          disabled={Boolean(activeWithdrawalAction)}
+                          class="action-button action-button-danger px-3 py-1.5 text-xs"
                         >
-                          Reject
+                          {#if activeWithdrawalAction === `${w.id}:failed`}
+                            <span class="action-spinner"></span>
+                          {/if}
+                          {activeWithdrawalAction === `${w.id}:failed`
+                            ? "Rejecting..."
+                            : "Reject"}
                         </button>
                       </form>
                     {/if}

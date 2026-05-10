@@ -35,6 +35,11 @@
   $: markets = data.markets as Market[];
   let loading = false;
   let error: string | null = null;
+  let creating = false;
+  let updating = false;
+  let settling = false;
+  let busyMarketId: string | null = null;
+  let busyAction: "archive" | "close" | null = null;
   let newProjectedEndDate = "";
   let editProjectedEndDate = "";
 
@@ -48,19 +53,26 @@
   let archiveFilter: "visible" | "archived" | "all" = "visible";
 
   async function onClose(m: Market) {
+    if (busyMarketId) return;
     const ok = confirm(
       `Close market “${m.title}”? This will prevent further trading.`,
     );
     if (!ok) return;
+    busyMarketId = m.id;
+    busyAction = "close";
     try {
       await Markets.close(m.id, accessToken);
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Close failed");
+    } finally {
+      busyMarketId = null;
+      busyAction = null;
     }
   }
 
   async function onArchive(m: Market) {
+    if (busyMarketId) return;
     const nextArchived = !m.is_archived;
     const action = nextArchived ? "Archive" : "Unarchive";
     const impact = nextArchived
@@ -69,11 +81,16 @@
     const ok = confirm(`${action} market "${m.title}"? ${impact}`);
     if (!ok) return;
 
+    busyMarketId = m.id;
+    busyAction = "archive";
     try {
       await Markets.update(m.id, { is_archived: nextArchived }, accessToken);
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || `${action} failed`);
+    } finally {
+      busyMarketId = null;
+      busyAction = null;
     }
   }
 
@@ -91,10 +108,13 @@
   // }
 
   async function createMarket() {
+    if (creating) return;
+
     if (!newTitle.trim()) {
       alert("Title is required");
       return;
     }
+    creating = true;
     try {
       await Markets.create(
         {
@@ -116,6 +136,8 @@
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Create failed");
+    } finally {
+      creating = false;
     }
   }
 
@@ -150,7 +172,9 @@
   }
 
   async function updateMarket() {
-    if (!edit) return;
+    if (!edit || updating) return;
+
+    updating = true;
     try {
       await Markets.update(
         edit.id,
@@ -168,6 +192,8 @@
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Update failed");
+    } finally {
+      updating = false;
     }
   }
 
@@ -179,6 +205,8 @@
   }
 
   async function confirmSettlement() {
+    if (settling) return;
+
     if (!settleMarket || !selectedOutcomeId) {
       alert("Please select a winning outcome.");
       return;
@@ -189,6 +217,7 @@
     );
     if (!ok) return;
 
+    settling = true;
     try {
       await Markets.settle(settleMarket.id, selectedOutcomeId, accessToken);
       settleOpen = false;
@@ -201,6 +230,8 @@
       } else {
         alert(e?.message || "Settlement failed");
       }
+    } finally {
+      settling = false;
     }
   }
 
@@ -467,11 +498,12 @@
             Cancel
           </button>
           <button
-            class="rounded-md border border-border bg-primary/20 px-3 py-1.5 text-sm text-primary hover:bg-primary/30 disabled:opacity-50"
+            class="action-button action-button-primary px-3 py-1.5"
             on:click={createMarket}
-            disabled={!newTitle.trim()}
+            disabled={!newTitle.trim() || creating}
           >
-            Create
+            {#if creating}<span class="action-spinner"></span>{/if}
+            {creating ? "Creating..." : "Create"}
           </button>
         </div>
       </div>
@@ -629,11 +661,12 @@
             Cancel
           </button>
           <button
-            class="rounded-md border border-border bg-primary/20 px-3 py-1.5 text-sm text-primary hover:bg-primary/30 disabled:opacity-50"
+            class="action-button action-button-primary px-3 py-1.5"
             on:click={updateMarket}
-            disabled={!editTitle.trim()}
+            disabled={!editTitle.trim() || updating}
           >
-            Save
+            {#if updating}<span class="action-spinner"></span>{/if}
+            {updating ? "Saving..." : "Save"}
           </button>
         </div>
       </div>
@@ -716,11 +749,12 @@
 
         <button
           type="button"
-          class="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-500/20"
+          class="action-button border-blue-500/40 bg-blue-500/10 px-3 py-1.5 text-blue-600 hover:bg-blue-500/20 dark:text-blue-300"
           on:click={confirmSettlement}
-          disabled={!selectedOutcomeId}
+          disabled={!selectedOutcomeId || settling}
         >
-          Confirm Settlement
+          {#if settling}<span class="action-spinner"></span>{/if}
+          {settling ? "Settling..." : "Confirm Settlement"}
         </button>
       </div>
     </div>
@@ -852,18 +886,32 @@
                 </button>
 
                 <button
-                  class="admin-button h-8 px-3 py-0 text-xs"
+                  class="action-button action-button-secondary h-8 px-3 py-0 text-xs"
                   on:click={() => onArchive(m)}
+                  disabled={busyMarketId === m.id}
                 >
-                  {m.is_archived ? "Unarchive" : "Archive"}
+                  {#if busyMarketId === m.id && busyAction === "archive"}
+                    <span class="action-spinner"></span>
+                  {/if}
+                  {busyMarketId === m.id && busyAction === "archive"
+                    ? "Saving..."
+                    : m.is_archived
+                      ? "Unarchive"
+                      : "Archive"}
                 </button>
 
                 {#if (m.status ?? "open") === "open"}
                   <button
-                    class="h-8 px-3 text-xs rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 transition"
+                    class="action-button action-button-warning h-8 px-3 py-0 text-xs"
                     on:click={() => onClose(m)}
+                    disabled={busyMarketId === m.id}
                   >
-                    Close
+                    {#if busyMarketId === m.id && busyAction === "close"}
+                      <span class="action-spinner"></span>
+                    {/if}
+                    {busyMarketId === m.id && busyAction === "close"
+                      ? "Closing..."
+                      : "Close"}
                   </button>
                 {:else if m.status === "closed"}
                   <button
