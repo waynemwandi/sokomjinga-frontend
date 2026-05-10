@@ -330,11 +330,11 @@
   const hasVolume = $derived(typeof volumeKES === "number" && volumeKES > 0);
 
   const volumeLabel = $derived(
-    hasVolume ? `${formatCompactKES(volumeKES)} Vol.` : "â€“ Vol.",
+    hasVolume ? `${formatCompactKES(volumeKES)} Vol.` : "- Vol.",
   );
 
   const projectedEndLabel = $derived(
-    projectedEndDate ? `Ends ${projectedEndDate}` : "Ends â€“",
+    projectedEndDate ? `Ends ${projectedEndDate}` : "Ends -",
   );
 
   let chartEl = $state<HTMLDivElement | null>(null);
@@ -657,13 +657,13 @@
       <div class={`text-3xl font-semibold ${chartToneClass}`}>
         {chartChancePct !== null
           ? `${chartChancePct}% ${chartSideLabel} chance`
-          : "â€”"}
+          : "-"}
       </div>
       <!-- Placeholder uptick -->
       {#if deltaPct !== null}
         <div class={`flex items-center gap-1 text-sm font-medium ${chartToneClass}`}>
           <span class="inline-block translate-y-[1px]">
-            {deltaPct >= 0 ? "â–²" : "â–¼"}
+            {deltaPct >= 0 ? "▲" : "▼"}
           </span>
           <span>{Math.abs(deltaPct)}%</span>
         </div>
@@ -697,7 +697,7 @@
                   }`}
                   onclick={() => selectChartSide("yes")}
                 >
-                  Yes {yesPct ?? "â€”"}%
+                  Yes {yesPct ?? "-"}%
                 </button>
                 <button
                   class={`rounded-md px-3 py-1 text-xs font-semibold transition ${
@@ -707,7 +707,7 @@
                   }`}
                   onclick={() => selectChartSide("no")}
                 >
-                  No {noPct ?? "â€”"}%
+                  No {noPct ?? "-"}%
                 </button>
               </div>
 
