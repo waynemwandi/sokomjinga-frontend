@@ -15,6 +15,7 @@
     data: PageData & {
       priceHistory?: any;
       initialSide?: "yes" | "no" | null;
+      marketBets?: MarketBet[];
     };
   }>();
 
@@ -71,6 +72,40 @@
     price?: number;
     price_kes?: number;
     total_stake_cents?: number;
+    status?: string | null;
+  };
+
+  type MarketBet = {
+    bet_id?: string;
+    id?: string;
+    market_id?: string;
+    title?: string;
+    category?: string;
+    market_status?: string | null;
+    prediction?: "yes" | "no" | string;
+    result?: "correct" | "incorrect" | "pending" | string;
+    created_at?: string;
+    close_at?: string | null;
+    projected_end_date?: string | null;
+    stake_cents?: number;
+    anticipated_payout_cents?: number | null;
+    settled_payout_cents?: number | null;
+    yes_percentage?: number;
+    no_percentage?: number;
+  };
+
+  type MarketPosition = {
+    id: string;
+    prediction: "yes" | "no";
+    result: "correct" | "incorrect" | "pending";
+    status: "open" | "closed" | "settled";
+    stakeCents: number;
+    payoutCents: number | null;
+    payoutLabel: string;
+    outcomeLabel: string;
+    outcomeCents: number | null;
+    outcomeTone: "green" | "red" | "neutral";
+    date: string;
   };
 
   const yesOutcome = $derived(outcomes.find((o: Outcome) => isYes(o)));
@@ -206,6 +241,51 @@
     };
   };
 
+  const formatDate = (d?: string | null) => {
+    if (!d) return "-";
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return "-";
+
+    return dt.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatCents = (cents?: number | null) =>
+    typeof cents === "number" ? formatKES(cents / 100) : "Pending";
+
+  const outcomeLabelOf = (o?: Outcome | null) =>
+    o?.label ?? o?.name ?? "Outcome";
+
+  const toResultKind = (
+    status?: string | null,
+  ): "correct" | "incorrect" | "pending" => {
+    const s = (status || "").toLowerCase();
+    if (s === "won" || s === "correct" || s === "settled_won") {
+      return "correct";
+    }
+    if (s === "lost" || s === "incorrect" || s === "settled_lost") {
+      return "incorrect";
+    }
+    return "pending";
+  };
+
+  const positionToneClass = (tone: "green" | "red" | "neutral") =>
+    tone === "green"
+      ? "text-emerald-500 dark:text-emerald-400"
+      : tone === "red"
+        ? "text-red-500 dark:text-red-400"
+        : "text-muted-foreground";
+
+  const outcomeToneClass = (o?: Outcome | null) =>
+    isYes(o)
+      ? "text-emerald-500 dark:text-emerald-400"
+      : isNo(o)
+        ? "text-red-500 dark:text-red-400"
+        : "text-foreground";
+
   const yesOutcomeStats = $derived(
     outcomes.find((o: any) => /^(yes|true)$/i.test(o?.label ?? o?.name ?? "")),
   );
@@ -215,6 +295,122 @@
   );
 
   const noPct = $derived(noOutcome ? Math.round(priceOf(noOutcome)) : null);
+
+  const winningOutcome = $derived.by(() => {
+    const winnerId =
+      market.winning_outcome_id ??
+      market.winner_outcome_id ??
+      market.settlement_outcome_id ??
+      market.settlement?.outcome_id ??
+      market.winning_outcome?.id ??
+      null;
+
+    if (winnerId) {
+      const byId = outcomes.find((o: Outcome) => o.id === String(winnerId));
+      if (byId) return byId;
+    }
+
+    return (
+      outcomes.find((o: Outcome) =>
+        ["winner", "winning", "won", "correct"].includes(
+          String(o.status ?? "").toLowerCase(),
+        ),
+      ) ??
+      (market.winning_outcome_label || market.settlement?.outcome_label
+        ? ({
+            id: winnerId ?? "settlement-outcome",
+            label: market.winning_outcome_label ?? market.settlement?.outcome_label,
+          } as Outcome)
+        : null)
+    );
+  });
+
+  const rawMarketBets = $derived((data.marketBets ?? []) as MarketBet[]);
+
+  const marketPositions: MarketPosition[] = $derived.by(() =>
+    rawMarketBets.map((bet, idx) => {
+      const prediction = String(bet.prediction ?? "yes").toLowerCase() === "no"
+        ? "no"
+        : "yes";
+      const result = toResultKind(bet.result);
+      const marketStatus = String(
+        bet.market_status ?? market.status ?? "open",
+      ).toLowerCase();
+      const status =
+        result === "correct" || result === "incorrect"
+          ? "settled"
+          : marketStatus === "closed" || marketStatus === "settled"
+            ? (marketStatus as "closed" | "settled")
+            : "open";
+      const stakeCents = bet.stake_cents ?? 0;
+      const payoutCents =
+        bet.settled_payout_cents ??
+        (result === "incorrect" ? 0 : bet.anticipated_payout_cents ?? null);
+      const possibleGainCents =
+        payoutCents != null ? payoutCents - stakeCents : null;
+      const outcomeLabel =
+        result === "correct"
+          ? "Won"
+          : result === "incorrect"
+            ? "Lost"
+            : status === "closed"
+              ? "Awaiting settlement"
+              : "Potential earnings";
+      const outcomeCents =
+        result === "incorrect"
+          ? stakeCents
+          : result === "correct" || result === "pending"
+            ? possibleGainCents
+            : payoutCents;
+      const outcomeTone =
+        result === "correct"
+          ? "green"
+          : result === "incorrect"
+            ? "red"
+            : (outcomeCents ?? 0) > 0
+              ? "green"
+              : (outcomeCents ?? 0) < 0
+                ? "red"
+                : "neutral";
+
+      return {
+        id: String(bet.bet_id ?? bet.id ?? idx),
+        prediction,
+        result,
+        status,
+        stakeCents,
+        payoutCents,
+        payoutLabel:
+          bet.settled_payout_cents != null || result === "incorrect"
+            ? "Paid out"
+            : "Anticipated payout",
+        outcomeLabel,
+        outcomeCents,
+        outcomeTone,
+        date: formatDate(bet.created_at),
+      };
+    }),
+  );
+
+  const marketPositionTotals = $derived.by(() => {
+    const stakeCents = marketPositions.reduce(
+      (sum, p) => sum + p.stakeCents,
+      0,
+    );
+    const payoutCents = marketPositions.reduce(
+      (sum, p) => sum + (p.payoutCents ?? 0),
+      0,
+    );
+    const hasKnownPayout = marketPositions.some((p) => p.payoutCents != null);
+
+    return {
+      stakeCents,
+      payoutCents,
+      gainCents: hasKnownPayout ? payoutCents - stakeCents : null,
+      count: marketPositions.length,
+      hasKnownPayout,
+    };
+  });
 
   const chartChancePct = $derived(chartSide === "yes" ? yesPct : noPct);
 
@@ -257,6 +453,8 @@
   let pollingInterval: ReturnType<typeof setInterval>;
 
   const fetchMarket = async () => {
+    if (!browser) return;
+
     const res = await fetch(`${PUBLIC_API_BASE}/markets/${market.id}`, {
       headers: { accept: "application/json" },
     });
@@ -281,6 +479,8 @@
   };
 
   const fetchPriceHistory = async () => {
+    if (!browser) return;
+
     const res = await fetch(
       `${PUBLIC_API_BASE}/markets/${market.id}/price-history`,
     );
@@ -828,6 +1028,164 @@
 
           <div class="p-4 space-y-5">
             {#if outcomes.length}
+              {#if !isTradable}
+                <div class="space-y-3">
+                  <div
+                    class={`rounded-lg border p-4 ${statusMeta(market).cls}`}
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <div class="text-sm font-semibold">
+                          Market {statusMeta(market).label.toLowerCase()}
+                        </div>
+                        <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+                          Trading is closed. You can still review the market
+                          chart, context, and final position here.
+                        </p>
+                        {#if projectedEndDate}
+                          <p class="mt-2 text-xs text-muted-foreground">
+                            Closed on {projectedEndDate}
+                          </p>
+                        {/if}
+                      </div>
+                      <span
+                        class={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold ${statusMeta(market).cls}`}
+                      >
+                        {statusMeta(market).label}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    class="rounded-lg border border-border/70 bg-background/40 p-4"
+                  >
+                    <p class="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Winning outcome
+                    </p>
+                    <p
+                      class={`mt-1 text-lg font-semibold ${outcomeToneClass(winningOutcome)}`}
+                    >
+                      {winningOutcome
+                        ? outcomeLabelOf(winningOutcome)
+                        : "Not set yet"}
+                    </p>
+                    <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                      {winningOutcome
+                        ? "This is the final result for this market."
+                        : "This market is closed but has not been settled yet."}
+                    </p>
+                  </div>
+
+                  <div
+                    class="rounded-lg border border-border/70 bg-background/40 p-4"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div>
+                        <p class="text-sm font-semibold">Your position</p>
+                        <p class="mt-1 text-xs text-muted-foreground">
+                          {#if !isAuthed}
+                            Log in to see what you placed on this market.
+                          {:else if marketPositions.length === 0}
+                            You did not place a prediction on this market.
+                          {:else}
+                            {marketPositionTotals.count}
+                            {marketPositionTotals.count === 1
+                              ? "prediction"
+                              : "predictions"}
+                            on this market.
+                          {/if}
+                        </p>
+                      </div>
+
+                      {#if marketPositions.length > 0}
+                        <div class="text-right">
+                          <p class="text-[11px] text-muted-foreground">
+                            Amount placed
+                          </p>
+                          <p class="text-sm font-semibold">
+                            {formatCents(marketPositionTotals.stakeCents)}
+                          </p>
+                        </div>
+                      {/if}
+                    </div>
+
+                    {#if marketPositions.length > 0}
+                      <div class="mt-4 border-t border-border/60 pt-3">
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p class="text-[11px] text-muted-foreground">
+                              Paid/expected
+                            </p>
+                            <p class="mt-1 font-semibold">
+                              {marketPositionTotals.hasKnownPayout
+                                ? formatCents(marketPositionTotals.payoutCents)
+                                : "Pending"}
+                            </p>
+                          </div>
+                          <div class="text-right">
+                            <p class="text-[11px] text-muted-foreground">
+                              Result
+                            </p>
+                            <p
+                              class={`mt-1 font-semibold ${positionToneClass(
+                                (marketPositionTotals.gainCents ?? 0) > 0
+                                  ? "green"
+                                  : (marketPositionTotals.gainCents ?? 0) < 0
+                                    ? "red"
+                                    : "neutral",
+                              )}`}
+                            >
+                              {marketPositionTotals.gainCents == null
+                                ? "Pending"
+                                : `${marketPositionTotals.gainCents >= 0 ? "+" : "-"}${formatCents(
+                                    Math.abs(marketPositionTotals.gainCents),
+                                  )}`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div class="mt-4 space-y-2">
+                          {#each marketPositions as position}
+                            <div
+                              class="rounded-md border border-border/60 bg-card/50 p-3 text-sm"
+                            >
+                              <div class="flex items-start justify-between gap-3">
+                                <div>
+                                  <p class="font-semibold">
+                                    Picked {position.prediction === "yes"
+                                      ? "Yes"
+                                      : "No"}
+                                  </p>
+                                  <p class="mt-1 text-[11px] text-muted-foreground">
+                                    Placed {position.date}
+                                  </p>
+                                </div>
+                                <div class="text-right">
+                                  <p
+                                    class={`font-semibold ${positionToneClass(
+                                      position.outcomeTone,
+                                    )}`}
+                                  >
+                                    {position.outcomeCents == null
+                                      ? "Pending"
+                                      : position.outcomeLabel === "Lost"
+                                        ? formatCents(position.outcomeCents)
+                                        : `${position.outcomeCents >= 0 ? "+" : "-"}${formatCents(Math.abs(position.outcomeCents))}`}
+                                  </p>
+                                  <p class="mt-1 text-[11px] text-muted-foreground">
+                                    {position.payoutLabel}:
+                                    {formatCents(position.payoutCents)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          {/each}
+                        </div>
+                      </div>
+                    {/if}
+                  </div>
+                </div>
+              {:else}
               <!-- YES / NO toggle row -->
               <div class="grid grid-cols-2 gap-2">
                 {#if yesOutcome}
@@ -986,11 +1344,6 @@
                   </div>
                 </div>
               {/if}
-              {#if !isTradable}
-                <div class="text-xs text-amber-400">
-                  This market is no longer open for trading.
-                </div>
-              {/if}
               <!-- Submit -->
               <button
                 type="submit"
@@ -1008,6 +1361,7 @@
                   Place order - {formatKES(Number(amountKES || 0))}
                 {/if}
               </button>
+              {/if}
             {:else}
               <div class="text-xs text-muted-foreground">No outcomes yet.</div>
             {/if}
@@ -1017,7 +1371,7 @@
     </div>
   </div>
   <!-- MOBILE BUY BAR (fixed above bottom nav) -->
-  {#if outcomes.length}
+  {#if outcomes.length && isTradable}
     <div
       class="fixed bottom-16 left-0 right-0 z-40 md:hidden
     border-t border-border bg-background/95 backdrop-blur px-4 py-3"
@@ -1058,7 +1412,7 @@
     </div>
   {/if}
 </main>
-{#if showMobileBuy}
+{#if showMobileBuy && isTradable}
   <div class="fixed inset-0 z-50 md:hidden">
     <!-- backdrop -->
     <button

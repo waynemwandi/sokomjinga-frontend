@@ -11,6 +11,8 @@
   const url = `${API_BASE}/health`;
 
   async function check() {
+    if (typeof window === "undefined") return;
+
     status = "checking";
     data = null;
     error = null;

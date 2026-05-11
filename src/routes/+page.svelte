@@ -122,6 +122,8 @@
   let pollingInterval: ReturnType<typeof setInterval>;
 
   const fetchMarkets = async () => {
+    if (typeof window === "undefined") return;
+
     try {
       const res = await fetch(`${PUBLIC_API_BASE}/markets`, {
         headers: { accept: "application/json" },

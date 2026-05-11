@@ -1,21 +1,26 @@
 // src/routes/(public)/market/[id]/+page.server.ts
 import type { Actions, PageServerLoad } from "./$types";
 import { redirect, error } from "@sveltejs/kit";
-import { Markets, Wallet } from "$lib/api.server";
+import { Markets, Me, Wallet } from "$lib/api.server";
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
   const id = params.id;
 
-  const [market, priceHistory, wallet] = await Promise.all([
+  const authHeaders = locals.accessToken
+    ? {
+        Authorization: `Bearer ${locals.accessToken}`,
+        accept: "application/json",
+      }
+    : null;
+
+  const [market, priceHistory, wallet, userBets] = await Promise.all([
     Markets.get(id),
     Markets.priceHistory(id),
-    locals.accessToken
-      ? Wallet.me({
-          headers: {
-            Authorization: `Bearer ${locals.accessToken}`,
-            accept: "application/json",
-          },
-        }).catch(() => null)
+    authHeaders
+      ? Wallet.me({ headers: authHeaders }).catch(() => null)
+      : Promise.resolve(null),
+    authHeaders
+      ? Me.bets({ headers: authHeaders }).catch(() => [])
       : Promise.resolve(null),
   ]);
 
@@ -30,6 +35,9 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
     outcomes: market.outcomes ?? [],
     priceHistory,
     wallet,
+    marketBets: Array.isArray(userBets)
+      ? userBets.filter((bet: any) => String(bet.market_id ?? "") === id)
+      : [],
     initialSide,
   };
 };
