@@ -43,6 +43,14 @@
     m.outcomes?.find((o: any) => /^(no|false)$/i.test(o.name ?? o.label ?? ""));
 
   const chanceOf = (m: any) => {
+    if (m.kind === "question") {
+      const top = [...(m.options ?? [])].sort(
+        (a: any, b: any) => (b.yes_price_cents ?? 0) - (a.yes_price_cents ?? 0),
+      )[0];
+      return typeof top?.yes_price_cents === "number"
+        ? Math.round(top.yes_price_cents)
+        : null;
+    }
     const y = yesOf(m);
     if (typeof y?.price_cents === "number") return Math.round(y.price_cents);
     if (typeof y?.prob === "number") return Math.round(y.prob * 100);
@@ -125,22 +133,40 @@
     if (typeof window === "undefined") return;
 
     try {
-      const res = await fetch(`${PUBLIC_API_BASE}/markets`, {
-        headers: { accept: "application/json" },
-      });
+      const [marketsRes, questionsRes] = await Promise.all([
+        fetch(`${PUBLIC_API_BASE}/markets`, {
+          headers: { accept: "application/json" },
+        }),
+        fetch(`${PUBLIC_API_BASE}/market-questions`, {
+          headers: { accept: "application/json" },
+        }),
+      ]);
 
-      if (!res.ok) return;
+      if (!marketsRes.ok || !questionsRes.ok) return;
 
-      const updated = await res.json();
+      const [updatedMarkets, updatedQuestions] = await Promise.all([
+        marketsRes.json(),
+        questionsRes.json(),
+      ]);
 
-      if (!Array.isArray(updated)) return;
+      if (!Array.isArray(updatedMarkets) || !Array.isArray(updatedQuestions))
+        return;
 
       // Normalize same as server
-      const normalized = updated.map((m) => ({
-        ...m,
-        image_url: m.image_url ?? m.img ?? null,
-        volume_cents: m.volume_cents ?? 0,
-      }));
+      const normalized = [
+        ...updatedQuestions.map((q) => ({
+          ...q,
+          kind: "question",
+          image_url: q.image_url ?? null,
+          volume_cents: q.volume_cents ?? 0,
+        })),
+        ...updatedMarkets.map((m) => ({
+          ...m,
+          kind: "market",
+          image_url: m.image_url ?? m.img ?? null,
+          volume_cents: m.volume_cents ?? 0,
+        })),
+      ];
 
       if (JSON.stringify(markets) !== JSON.stringify(normalized)) {
         markets = normalized;
@@ -237,6 +263,11 @@
     return diff > 0 && diff <= ONE_DAY;
   }
 
+  const optionRows = (m: any) =>
+    [...(m.options ?? [])]
+      .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+      .slice(0, 2);
+
   let now = $state(Date.now());
 
   onMount(() => {
@@ -257,7 +288,7 @@
 </script>
 
 <svelte:head>
-  <title>MaoniMarket | Kenya’s Largest Prediction Market</title>
+  <title>MaoniMarket | Kenya’s Largest Prediction Market™</title>
 
   <meta
     name="description"
@@ -285,9 +316,7 @@
 
 <!-- primary nav row (categories) -->
 <div class="border-t border-border/60">
-  <div
-    class="home-category-bar mx-auto w-full max-w-[1400px] px-4 md:px-6"
-  >
+  <div class="home-category-bar mx-auto w-full max-w-[1400px] px-4 md:px-6">
     {#each categories as c}
       <button
         class={`home-category-tab
@@ -345,14 +374,10 @@
       {#each visibleMarkets as m (m.id)}
         <article
           class={`market-card group
-            ${
-              isClosingSoon(m)
-                ? "market-card-alert"
-                : ""
-            }`}
+            ${isClosingSoon(m) ? "market-card-alert" : ""}`}
         >
           <a
-            href={`/market/${encodeURIComponent(m.id)}`}
+            href={`/${m.kind === "question" ? "question" : "market"}/${encodeURIComponent(m.id)}`}
             class="market-card-link"
           >
             <!-- HEADER -->
@@ -424,27 +449,66 @@
 
             <!-- ACTIONS -->
             <div class="market-actions">
-              <div class="grid grid-cols-2 gap-3">
-                <button
-                  class="btn btn-yes"
-                  onclick={(e) => {
-                    e.preventDefault();
-                    goto(`/market/${m.id}?side=yes`);
-                  }}
-                >
-                  Yes
-                </button>
+              {#if m.kind === "question"}
+                <div class="space-y-2">
+                  {#each optionRows(m) as option}
+                    <div
+                      class="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 text-sm"
+                    >
+                      <span class="min-w-0 truncate font-medium">
+                        {option.label}
+                      </span>
+                      <span class="text-muted-foreground">
+                        {option.yes_price_cents ?? 50}%
+                      </span>
+                      <button
+                        class="btn btn-yes h-8 px-3 text-xs"
+                        onclick={(e) => {
+                          e.preventDefault();
+                          goto(
+                            `/question/${m.id}?option=${option.market_id}&side=yes`,
+                          );
+                        }}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        class="btn btn-no h-8 px-3 text-xs"
+                        onclick={(e) => {
+                          e.preventDefault();
+                          goto(
+                            `/question/${m.id}?option=${option.market_id}&side=no`,
+                          );
+                        }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    class="btn btn-yes"
+                    onclick={(e) => {
+                      e.preventDefault();
+                      goto(`/market/${m.id}?side=yes`);
+                    }}
+                  >
+                    Yes
+                  </button>
 
-                <button
-                  class="btn btn-no"
-                  onclick={(e) => {
-                    e.preventDefault();
-                    goto(`/market/${m.id}?side=no`);
-                  }}
-                >
-                  No
-                </button>
-              </div>
+                  <button
+                    class="btn btn-no"
+                    onclick={(e) => {
+                      e.preventDefault();
+                      goto(`/market/${m.id}?side=no`);
+                    }}
+                  >
+                    No
+                  </button>
+                </div>
+              {/if}
             </div>
 
             <!-- FOOTER -->

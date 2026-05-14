@@ -1,14 +1,16 @@
 // src/routes/(app)/admin/markets/+page.server.ts
 import type { Actions, PageServerLoad } from "./$types";
-import { Markets, Outcomes } from "$lib/api.server"; // <-- server-only client
+import { MarketQuestions, Markets, Outcomes } from "$lib/api.server";
 
 export const load: PageServerLoad = async ({ locals }) => {
-  const markets = await Markets.list(
-    { headers: { Authorization: `Bearer ${locals.accessToken}` } },
-    { includeArchived: true },
-  );
+  const init = { headers: { Authorization: `Bearer ${locals.accessToken}` } };
+  const [markets, questions] = await Promise.all([
+    Markets.list(init, { includeArchived: true }),
+    MarketQuestions.list(init, { includeArchived: true }),
+  ]);
   return {
     markets,
+    questions,
     accessToken: locals.accessToken ?? null,
   };
 };

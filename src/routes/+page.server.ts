@@ -18,22 +18,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       ? "http://api:8000"
       : pub.PUBLIC_API_BASE || "http://api:8000");
 
-  // Fetch the markets list for the homepage grid.
-  const res = await fetch(join(serverBase, "/markets"), {
+  const requestInit = {
     headers: { accept: "application/json" },
-    // Avoid caching during active development; feel free to remove later.
     cache: "no-store",
-  });
+  } as const;
 
-  if (!res.ok) {
-    // Surfacing a clear error in dev
-    throw new Error(`GET /markets failed: ${res.status} ${res.statusText}`);
+  const [marketsRes, questionsRes] = await Promise.all([
+    fetch(join(serverBase, "/markets"), requestInit),
+    fetch(join(serverBase, "/market-questions"), requestInit),
+  ]);
+
+  if (!marketsRes.ok) {
+    throw new Error(`GET /markets failed: ${marketsRes.status} ${marketsRes.statusText}`);
+  }
+  if (!questionsRes.ok) {
+    throw new Error(
+      `GET /market-questions failed: ${questionsRes.status} ${questionsRes.statusText}`,
+    );
   }
 
-  const markets = await res.json();
+  const [markets, questions] = await Promise.all([
+    marketsRes.json(),
+    questionsRes.json(),
+  ]);
 
   // Normalize API response for UI consumption (image_url, volume, safe defaults)
-  const normalized = Array.isArray(markets)
+  const normalizedMarkets = Array.isArray(markets)
     ? markets.map((m) => {
         const volumeCents = m.volume_cents ?? 0;
 
@@ -49,6 +59,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
         return {
           ...m,
+          kind: "market",
           image_url: m.image_url ?? m.img ?? null,
           volume_cents: volumeCents,
           volume_label: volumeLabel,
@@ -56,9 +67,18 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       })
     : [];
 
+  const normalizedQuestions = Array.isArray(questions)
+    ? questions.map((q) => ({
+        ...q,
+        kind: "question",
+        image_url: q.image_url ?? null,
+        volume_cents: q.volume_cents ?? 0,
+      }))
+    : [];
+
   return {
     isAuthed: locals.isAuthed,
-    markets: normalized,
+    markets: [...normalizedQuestions, ...normalizedMarkets],
     selectedCategory,
   };
 };

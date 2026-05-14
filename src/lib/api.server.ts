@@ -123,6 +123,49 @@ export const Markets = {
 };
 
 // -----------------
+// Market Questions API - grouped Yes/No markets
+// -----------------
+export const MarketQuestions = {
+  list: (init?: RequestInit, options?: { includeArchived?: boolean }) =>
+    j<any[]>(
+      `/market-questions${options?.includeArchived ? "?include_archived=true" : ""}`,
+      init,
+    ),
+  get: (id: string, init?: RequestInit) =>
+    j<any>(`/market-questions/${id}`, init),
+  create: (payload: any, init?: RequestInit) =>
+    j<any>("/market-questions", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    }),
+  update: (id: string, payload: any, init?: RequestInit) =>
+    j<any>(`/market-questions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    }),
+  settle: (id: string, winningMarketId: string, init?: RequestInit) =>
+    j<any>(`/market-questions/${id}/settle`, {
+      method: "POST",
+      body: JSON.stringify({ winning_market_id: winningMarketId }),
+      ...(init || {}),
+      headers: {
+        "content-type": "application/json",
+        ...(init?.headers || {}),
+      },
+    }),
+};
+
+// -----------------
 // Market Outcomes API - CRUD
 // -----------------
 export const Outcomes = {

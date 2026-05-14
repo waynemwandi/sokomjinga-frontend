@@ -1,11 +1,12 @@
 <!-- src/routes/(app)/admin/markets/+page.svelte -->
 <script lang="ts">
-  import { Markets } from "$lib/api"; // client helper
+  import { MarketQuestions, Markets } from "$lib/api";
   import { CircleAlert } from "lucide-svelte";
   import { invalidateAll } from "$app/navigation";
   export let data: {
     accessToken?: string | null;
     markets: any[];
+    questions: any[];
   };
 
   const accessToken = (data.accessToken ?? undefined) as string | undefined;
@@ -28,20 +29,30 @@
   };
 
   let showCreate = false;
+  let showCreateQuestion = false;
   let newTitle = "";
   let newDescription = "";
   let newImageUrl = "";
   let newCategory = "";
-  $: markets = data.markets as Market[];
+  let isMultiQuestion = false;
+  $: markets = (data.markets ?? []) as Market[];
+  $: questions = data.questions ?? [];
   let loading = false;
   let error: string | null = null;
   let creating = false;
+  let creatingQuestion = false;
   let updating = false;
   let settling = false;
   let busyMarketId: string | null = null;
   let busyAction: "archive" | "close" | null = null;
   let newProjectedEndDate = "";
   let editProjectedEndDate = "";
+  let questionTitle = "";
+  let questionDescription = "";
+  let questionImageUrl = "";
+  let questionCategory = "";
+  let questionProjectedEndDate = "";
+  let questionOptions = ["", ""];
 
   // Settlement modal state
   let settleOpen = false;
@@ -51,6 +62,10 @@
   let q = "";
   let onlyOpen = false;
   let archiveFilter: "visible" | "archived" | "all" = "visible";
+  let activeView: "single" | "multi" =
+    (data.markets ?? []).length === 0 && (data.questions ?? []).length > 0
+      ? "multi"
+      : "single";
 
   async function onClose(m: Market) {
     if (busyMarketId) return;
@@ -114,30 +129,124 @@
       alert("Title is required");
       return;
     }
+
+    const options = questionOptions.map((value) => value.trim()).filter(Boolean);
+    if (isMultiQuestion && options.length < 2) {
+      alert("Add at least two options");
+      return;
+    }
+
     creating = true;
     try {
-      await Markets.create(
-        {
-          title: newTitle.trim(),
-          description: newDescription.trim() || null,
-          image_url: newImageUrl.trim() || null,
-          category: newCategory.trim() || null,
-          projected_end_date: newProjectedEndDate || null,
-          status: "open",
-        },
-        accessToken,
-      );
+      const payload = {
+        title: newTitle.trim(),
+        description: newDescription.trim() || null,
+        image_url: newImageUrl.trim() || null,
+        category: newCategory.trim() || null,
+        projected_end_date: newProjectedEndDate || null,
+        status: "open",
+      };
+
+      if (isMultiQuestion) {
+        await MarketQuestions.create(
+          {
+            ...payload,
+            options: options.map((label, order) => ({ label, order })),
+          },
+          accessToken,
+        );
+      } else {
+        await Markets.create(payload, accessToken);
+      }
       showCreate = false;
       newTitle = "";
       newDescription = "";
       newImageUrl = "";
       newCategory = "";
       newProjectedEndDate = "";
+      isMultiQuestion = false;
+      questionOptions = ["", ""];
       await invalidateAll();
     } catch (e: any) {
       alert(e?.message || "Create failed");
     } finally {
       creating = false;
+    }
+  }
+
+  function addQuestionOption() {
+    questionOptions = [...questionOptions, ""];
+  }
+
+  function removeQuestionOption(index: number) {
+    if (questionOptions.length <= 2) return;
+    questionOptions = questionOptions.filter((_, i) => i !== index);
+  }
+
+  async function createQuestion() {
+    if (creatingQuestion) return;
+    const options = questionOptions.map((value) => value.trim()).filter(Boolean);
+    if (!questionTitle.trim()) {
+      alert("Question title is required");
+      return;
+    }
+    if (options.length < 2) {
+      alert("Add at least two options");
+      return;
+    }
+
+    creatingQuestion = true;
+    try {
+      await MarketQuestions.create(
+        {
+          title: questionTitle.trim(),
+          description: questionDescription.trim() || null,
+          image_url: questionImageUrl.trim() || null,
+          category: questionCategory.trim() || null,
+          projected_end_date: questionProjectedEndDate || null,
+          options: options.map((label, order) => ({ label, order })),
+          status: "open",
+        },
+        accessToken,
+      );
+      showCreateQuestion = false;
+      questionTitle = "";
+      questionDescription = "";
+      questionImageUrl = "";
+      questionCategory = "";
+      questionProjectedEndDate = "";
+      questionOptions = ["", ""];
+      await invalidateAll();
+    } catch (e: any) {
+      alert(e?.message || "Create question failed");
+    } finally {
+      creatingQuestion = false;
+    }
+  }
+
+  async function updateQuestionStatus(question: any, status: string) {
+    if (!confirm(`${status === "closed" ? "Close" : "Update"} question "${question.title}"?`)) {
+      return;
+    }
+    try {
+      await MarketQuestions.update(question.id, { status }, accessToken);
+      await invalidateAll();
+    } catch (e: any) {
+      alert(e?.message || "Question update failed");
+    }
+  }
+
+  async function archiveQuestion(question: any) {
+    const nextArchived = !question.is_archived;
+    try {
+      await MarketQuestions.update(
+        question.id,
+        { is_archived: nextArchived },
+        accessToken,
+      );
+      await invalidateAll();
+    } catch (e: any) {
+      alert(e?.message || "Question archive failed");
     }
   }
 
@@ -151,6 +260,25 @@
     .filter((m) =>
       q ? m.title?.toLowerCase().includes(q.toLowerCase()) : true,
     );
+
+  $: filteredQuestions = questions
+    .filter((question) =>
+      onlyOpen ? (question.status ?? "open") === "open" : true,
+    )
+    .filter((question) => {
+      if (archiveFilter === "all") return true;
+      if (archiveFilter === "archived") return Boolean(question.is_archived);
+      return !question.is_archived;
+    })
+    .filter((question) => {
+      if (!q) return true;
+      const query = q.toLowerCase();
+      const titleMatch = question.title?.toLowerCase().includes(query);
+      const optionMatch = (question.options ?? []).some((option: any) =>
+        option.label?.toLowerCase().includes(query),
+      );
+      return titleMatch || optionMatch;
+    });
 
   let editOpen = false;
   let edit: Market | null = null;
@@ -277,14 +405,19 @@
   let page = 1;
   let pageSize = 8;
 
-  $: totalPages = Math.ceil(filtered.length / pageSize);
+  $: activeCount = activeView === "multi" ? filteredQuestions.length : filtered.length;
+  $: totalPages = Math.max(1, Math.ceil(activeCount / pageSize));
   $: paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
+  $: paginatedQuestions = filteredQuestions.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
 
   // Prevent landing on empty pages
   $: if (page > totalPages) page = totalPages;
 
   // Reset to first page on new search or filter
-  $: (filtered, (page = 1));
+  $: (filtered, filteredQuestions, activeView, (page = 1));
 </script>
 
 <div class="space-y-6">
@@ -336,7 +469,6 @@
       {refreshing ? "Refreshing..." : "Refresh"}
     </button>
 
-    <!-- New Market -->
     <button
       class="admin-button-primary"
       on:click={() => (showCreate = true)}
@@ -344,6 +476,54 @@
       + New Market
     </button>
   </div>
+</div>
+
+<div class="grid gap-3 sm:grid-cols-2">
+  <button
+    type="button"
+    class={`admin-panel p-4 text-left transition ${
+      activeView === "single" ? "border-primary/60 bg-primary/5" : "hover:border-primary/40"
+    }`}
+    on:click={() => (activeView = "single")}
+  >
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <div class="text-sm font-semibold">Single markets</div>
+        <div class="mt-1 text-xs text-muted-foreground">
+          Traditional Yes/No markets
+        </div>
+      </div>
+      <div class="rounded-md bg-input px-3 py-1 text-sm font-semibold">
+        {markets.length}
+      </div>
+    </div>
+    <div class="mt-3 text-xs text-muted-foreground">
+      {filtered.length} matching current filters
+    </div>
+  </button>
+
+  <button
+    type="button"
+    class={`admin-panel p-4 text-left transition ${
+      activeView === "multi" ? "border-primary/60 bg-primary/5" : "hover:border-primary/40"
+    }`}
+    on:click={() => (activeView = "multi")}
+  >
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <div class="text-sm font-semibold">Multi-option questions</div>
+        <div class="mt-1 text-xs text-muted-foreground">
+          One question with grouped Yes/No options
+        </div>
+      </div>
+      <div class="rounded-md bg-input px-3 py-1 text-sm font-semibold">
+        {questions.length}
+      </div>
+    </div>
+    <div class="mt-3 text-xs text-muted-foreground">
+      {filteredQuestions.length} matching current filters
+    </div>
+  </button>
 </div>
 
 <!-- ===========================
@@ -452,6 +632,52 @@
               bind:value={newProjectedEndDate}
             />
           </div>
+
+          <label class="admin-button inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              bind:checked={isMultiQuestion}
+              class="rounded border-border bg-input"
+            />
+            Multi-option question
+          </label>
+
+          {#if isMultiQuestion}
+            <div class="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+              <div>
+                <div class="text-sm font-medium">Options</div>
+                <p class="text-xs text-muted-foreground">
+                  Each option becomes a separate Yes/No market under this question.
+                </p>
+              </div>
+
+              {#each questionOptions as option, i}
+                <div class="flex gap-2">
+                  <input
+                    class="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm"
+                    bind:value={questionOptions[i]}
+                    placeholder={`Option ${i + 1}`}
+                  />
+                  <button
+                    type="button"
+                    class="admin-button px-3"
+                    on:click={() => removeQuestionOption(i)}
+                    disabled={questionOptions.length <= 2}
+                  >
+                    Remove
+                  </button>
+                </div>
+              {/each}
+
+              <button
+                type="button"
+                class="admin-button"
+                on:click={addQuestionOption}
+              >
+                + Add option
+              </button>
+            </div>
+          {/if}
         </div>
 
         <!-- Right: preview -->
@@ -472,6 +698,15 @@
               <div class="text-sm font-medium">
                 {newTitle || "Untitled market"}
               </div>
+              {#if isMultiQuestion}
+                <div class="mt-2 flex flex-wrap gap-1">
+                  {#each questionOptions.filter(Boolean) as option}
+                    <span class="inline-flex items-center rounded bg-input px-2 py-0.5 text-xs">
+                      {option}
+                    </span>
+                  {/each}
+                </div>
+              {/if}
               {#if newCategory}
                 <span
                   class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs bg-primary/10 text-primary"
@@ -503,7 +738,160 @@
             disabled={!newTitle.trim() || creating}
           >
             {#if creating}<span class="action-spinner"></span>{/if}
-            {creating ? "Creating..." : "Create"}
+            {creating ? "Creating..." : isMultiQuestion ? "Create Question" : "Create"}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- ===========================
+  Create Question Modal
+=========================== -->
+{#if showCreateQuestion}
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+    role="presentation"
+    on:keydown={(e) => e.key === "Escape" && (showCreateQuestion = false)}
+    tabindex="-1"
+  >
+    <button
+      type="button"
+      class="absolute inset-0 bg-foreground/50"
+      aria-label="Close dialog"
+      on:click={() => (showCreateQuestion = false)}
+    ></button>
+
+    <div
+      class="relative w-full max-w-4xl rounded-xl border border-border bg-card p-4 shadow-xl"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create Multi-option Question"
+      on:click|stopPropagation
+      on:keydown|stopPropagation
+      tabindex="-1"
+    >
+      <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-base font-semibold">Create Multi-option Question</h2>
+        <button
+          type="button"
+          class="rounded-md border border-border bg-input px-2 py-1 text-xs hover:bg-card"
+          on:click={() => (showCreateQuestion = false)}
+        >
+          Close
+        </button>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
+        <div class="space-y-3">
+          <div class="grid gap-1.5">
+            <label for="question-title" class="text-xs text-muted-foreground">
+              Question *
+            </label>
+            <input
+              id="question-title"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={questionTitle}
+              placeholder="e.g. What will WTI Crude Oil hit in May 2026?"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label for="question-category" class="text-xs text-muted-foreground">
+              Category
+            </label>
+            <input
+              id="question-category"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={questionCategory}
+              list="market-categories"
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label for="question-description" class="text-xs text-muted-foreground">
+              Description
+            </label>
+            <textarea
+              id="question-description"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              rows="3"
+              bind:value={questionDescription}
+            ></textarea>
+          </div>
+
+          <div class="grid gap-1.5">
+            <label for="question-image-url" class="text-xs text-muted-foreground">
+              Image URL
+            </label>
+            <input
+              id="question-image-url"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={questionImageUrl}
+              placeholder="https://..."
+            />
+          </div>
+
+          <div class="grid gap-1.5">
+            <label for="question-projected-end" class="text-xs text-muted-foreground">
+              Projected end date
+            </label>
+            <input
+              id="question-projected-end"
+              type="date"
+              class="rounded-md border border-border bg-input px-3 py-2 text-sm"
+              bind:value={questionProjectedEndDate}
+            />
+          </div>
+        </div>
+
+        <div class="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+          <div>
+            <div class="text-sm font-medium">Options</div>
+            <p class="text-xs text-muted-foreground">
+              Each option becomes its own Yes/No market with KES 1 display-only starter liquidity per side.
+            </p>
+          </div>
+
+          {#each questionOptions as option, i}
+            <div class="flex gap-2">
+              <input
+                class="min-w-0 flex-1 rounded-md border border-border bg-input px-3 py-2 text-sm"
+                bind:value={questionOptions[i]}
+                placeholder={`Option ${i + 1}`}
+              />
+              <button
+                type="button"
+                class="admin-button px-3"
+                on:click={() => removeQuestionOption(i)}
+                disabled={questionOptions.length <= 2}
+              >
+                Remove
+              </button>
+            </div>
+          {/each}
+
+          <button type="button" class="admin-button" on:click={addQuestionOption}>
+            + Add option
+          </button>
+        </div>
+
+        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="rounded-md border border-border bg-input px-3 py-1.5 text-sm hover:bg-card"
+            on:click={() => (showCreateQuestion = false)}
+          >
+            Cancel
+          </button>
+          <button
+            class="action-button action-button-primary px-3 py-1.5"
+            on:click={createQuestion}
+            disabled={!questionTitle.trim() || creatingQuestion}
+          >
+            {#if creatingQuestion}<span class="action-spinner"></span>{/if}
+            {creatingQuestion ? "Creating..." : "Create Question"}
           </button>
         </div>
       </div>
@@ -768,13 +1156,135 @@
   <div class="text-sm text-muted-foreground">Loading markets…</div>
 {:else if error}
   <div class="text-sm text-red-500">{error}</div>
+{:else if activeView === "multi"}
+  {#if filteredQuestions.length === 0}
+    <div class="admin-panel p-6 text-sm text-muted-foreground">
+      No multi-option questions found.
+    </div>
+  {:else}
+    <section class="admin-panel overflow-hidden">
+      <div class="admin-panel-header">
+        <div>
+          <h2 class="text-lg font-semibold tracking-tight">Multi-option questions</h2>
+          <p class="mt-1 text-sm text-muted-foreground">
+            {filteredQuestions.length} question{filteredQuestions.length === 1 ? "" : "s"} matching the current view.
+          </p>
+        </div>
+        <div class="text-xs text-muted-foreground">Page {page} of {totalPages}</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="admin-table min-w-[980px]">
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Status</th>
+              <th>Options</th>
+              <th>Projected End</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each paginatedQuestions as question (question.id)}
+              <tr>
+                <td>
+                  <div class="font-medium">{question.title}</div>
+                  {#if question.category}
+                    <span class="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded">
+                      {question.category}
+                    </span>
+                  {/if}
+                  {#if question.is_archived}
+                    <span class="ml-1 text-xs rounded bg-muted px-2 py-0.5 text-muted-foreground">
+                      Archived
+                    </span>
+                  {/if}
+                </td>
+                <td>
+                  <span class="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs">
+                    {question.status ?? "open"}
+                  </span>
+                </td>
+                <td>
+                  <div class="flex flex-wrap gap-1">
+                    {#each question.options ?? [] as option}
+                      <span class="inline-flex items-center rounded bg-input px-2 py-0.5 text-xs">
+                        {option.label} ({option.yes_price_cents ?? 50}%)
+                      </span>
+                    {/each}
+                  </div>
+                </td>
+                <td>
+                  {#if question.projected_end_date}
+                    <time class="text-xs text-muted-foreground">
+                      {formatDate(question.projected_end_date)}
+                    </time>
+                  {:else}
+                    <span class="text-xs text-muted-foreground">-</span>
+                  {/if}
+                </td>
+                <td>
+                  <div class="flex justify-end gap-2">
+                    <a
+                      class="admin-button h-8 px-3 py-1.5 text-xs"
+                      href={`/question/${question.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View
+                    </a>
+                    <button
+                      class="action-button action-button-secondary h-8 px-3 py-0 text-xs"
+                      on:click={() => archiveQuestion(question)}
+                    >
+                      {question.is_archived ? "Unarchive" : "Archive"}
+                    </button>
+                    {#if (question.status ?? "open") === "open"}
+                      <button
+                        class="action-button action-button-warning h-8 px-3 py-0 text-xs"
+                        on:click={() => updateQuestionStatus(question, "closed")}
+                      >
+                        Close
+                      </button>
+                    {/if}
+                  </div>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between border-t border-border/60 px-5 py-4 text-sm">
+        <div>Page {page} of {totalPages}</div>
+
+        <div class="flex gap-2">
+          <button
+            class="admin-button px-3 py-1.5"
+            on:click={() => (page = Math.max(1, page - 1))}
+            disabled={page === 1}
+          >
+            Previous
+          </button>
+
+          <button
+            class="admin-button px-3 py-1.5"
+            on:click={() => (page = Math.min(totalPages, page + 1))}
+            disabled={page === totalPages}
+          >
+            Next
+          </button>
+        </div>
+      </div>
+    </section>
+  {/if}
 {:else if filtered.length === 0}
-  <div class="admin-panel p-6 text-sm text-muted-foreground">No markets found.</div>
+  <div class="admin-panel p-6 text-sm text-muted-foreground">No single markets found.</div>
 {:else}
   <section class="admin-panel overflow-hidden">
     <div class="admin-panel-header">
       <div>
-        <h2 class="text-lg font-semibold tracking-tight">Market list</h2>
+        <h2 class="text-lg font-semibold tracking-tight">Single markets</h2>
         <p class="mt-1 text-sm text-muted-foreground">
           {filtered.length} market{filtered.length === 1 ? "" : "s"} matching the current view.
         </p>

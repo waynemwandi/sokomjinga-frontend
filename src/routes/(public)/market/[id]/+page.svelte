@@ -71,7 +71,9 @@
     price_cents?: number;
     price?: number;
     price_kes?: number;
+    real_stake_cents?: number;
     total_stake_cents?: number;
+    display_pool_cents?: number;
     status?: string | null;
   };
 
@@ -184,9 +186,7 @@
 
     if (newWinningPool <= 0 || newTotalPool <= 0) return 0;
 
-    const feeRate = (market.fee_rate_bps ?? 500) / 10000;
-    const fee = newTotalPool * feeRate;
-    const distributable = newTotalPool - fee;
+    const distributable = newTotalPool;
 
     const payoutCents = (stakeCents * distributable) / newWinningPool;
 
@@ -431,15 +431,29 @@
   );
 
   const selectedPool = $derived(
-    selectedOutcome ? Number(selectedOutcome.total_stake_cents ?? 0) : 0,
+    selectedOutcome
+      ? Number(
+          selectedOutcome.display_pool_cents ??
+            selectedOutcome.real_stake_cents ??
+            selectedOutcome.total_stake_cents ??
+            0,
+        )
+      : 0,
   );
 
   const oppositePool = $derived(
     selectedOutcome
-      ? Number(
-          outcomes.find((o: Outcome) => o.id !== selectedOutcome!.id)
-            ?.total_stake_cents ?? 0,
-        )
+      ? (() => {
+          const opposite = outcomes.find(
+            (o: Outcome) => o.id !== selectedOutcome!.id,
+          );
+          return Number(
+            opposite?.display_pool_cents ??
+              opposite?.real_stake_cents ??
+              opposite?.total_stake_cents ??
+              0,
+          );
+        })()
       : 0,
   );
 
@@ -1339,7 +1353,7 @@
                   <div
                     class="text-[11px] leading-relaxed text-muted-foreground"
                   >
-                    Estimated using current market pools. Final payout may
+                    Estimate includes starter display liquidity. Final payout may
                     change as more predictions are placed.
                   </div>
                 </div>

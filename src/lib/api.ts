@@ -155,6 +155,42 @@ export const Markets = {
     }),
 };
 
+export const MarketQuestions = {
+  list: (options?: { includeArchived?: boolean }) =>
+    j<any[]>(
+      `/market-questions${options?.includeArchived ? "?include_archived=true" : ""}`,
+    ),
+
+  get: (id: string) => j<any>(`/market-questions/${id}`),
+
+  create: (payload: any, accessToken?: string) =>
+    j<any>("/market-questions", {
+      method: "POST",
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined,
+    }),
+
+  update: (id: string, payload: any, accessToken?: string) =>
+    j<any>(`/market-questions/${id}`, {
+      method: "PUT",
+      body: typeof payload === "string" ? payload : JSON.stringify(payload),
+      headers: accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined,
+    }),
+
+  settle: (id: string, winningMarketId: string, accessToken?: string) =>
+    j<any>(`/market-questions/${id}/settle`, {
+      method: "POST",
+      body: JSON.stringify({ winning_market_id: winningMarketId }),
+      headers: accessToken
+        ? { Authorization: `Bearer ${accessToken}` }
+        : undefined,
+    }),
+};
+
 /* ===============================
 OUTCOMES
 ================================= */

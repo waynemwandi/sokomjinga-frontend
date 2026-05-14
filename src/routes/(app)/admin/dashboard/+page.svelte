@@ -58,6 +58,7 @@
   let userQuery = data.userSearch ?? "";
   let lastSyncedSearch = data.userSearch ?? "";
   let searchTimer: number | undefined;
+  let hoveredLoginIndex: number | null = null;
 
   $: if ((data.userSearch ?? "") !== lastSyncedSearch) {
     lastSyncedSearch = data.userSearch ?? "";
@@ -209,14 +210,38 @@
 
             <div class="relative flex h-full items-end gap-1">
               {#each points as point, index}
-                <div class="flex min-w-0 flex-1 flex-col items-center gap-2">
+                <div class="relative flex min-w-0 flex-1 flex-col items-center gap-2">
                   <div class="flex h-44 w-full items-end">
-                    <div
-                      class="mx-auto w-full max-w-7 rounded-t bg-emerald-500/80 transition-all"
+                    <button
+                      type="button"
+                      class="mx-auto w-full max-w-7 rounded-t bg-emerald-500/80 p-0 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
                       title={`${formatShortDate(point.date)}: ${point.logins} logins`}
                       style={`height: ${barHeight(point.logins)}`}
-                    ></div>
+                      onmouseenter={() => (hoveredLoginIndex = index)}
+                      onmouseleave={() => (hoveredLoginIndex = null)}
+                      onfocus={() => (hoveredLoginIndex = index)}
+                      onblur={() => (hoveredLoginIndex = null)}
+                      aria-label={`${formatShortDate(point.date)}: ${point.logins} logins`}
+                    ></button>
                   </div>
+                  {#if hoveredLoginIndex === index}
+                    <div
+                      class={`pointer-events-none absolute bottom-16 z-20 w-44 rounded-md border border-border bg-popover p-3 text-xs text-popover-foreground shadow-xl ${
+                        index > points.length - 5 ? "right-0" : "left-1/2 -translate-x-1/2"
+                      }`}
+                    >
+                      <div class="mb-2 font-semibold">
+                        {formatDate(point.date)}
+                      </div>
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="inline-flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-sm bg-emerald-500"></span>
+                          Successful logins
+                        </span>
+                        <span class="font-semibold">{point.logins}</span>
+                      </div>
+                    </div>
+                  {/if}
                   {#if index === 0 || index === points.length - 1 || index % 7 === 0}
                     <div class="w-14 truncate text-center text-[10px] text-muted-foreground">
                       {formatShortDate(point.date)}
