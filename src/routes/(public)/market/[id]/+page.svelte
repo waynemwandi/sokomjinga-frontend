@@ -28,6 +28,7 @@
   );
   let isSubmitting = $state(false);
   let showMobileBuy = $state(false);
+  let showOrderBook = $state(false);
 
   const isAuthed = data.isAuthed ?? false;
 
@@ -967,17 +968,29 @@
           </div>
         </div>
 
-        <!-- Order book card (placeholder) -->
-        <div class="rounded-xl border border-border bg-card">
-          <div
-            class="p-4 border-b border-border/60 text-sm font-medium flex items-center justify-between"
+        <!-- Order book drawer (placeholder) -->
+        <div class="overflow-hidden rounded-xl border border-border bg-card">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between gap-4 p-4 text-left text-sm font-medium transition-colors hover:bg-muted/40"
+            aria-expanded={showOrderBook}
+            onclick={() => (showOrderBook = !showOrderBook)}
           >
             <span>Order Book</span>
-          </div>
+            <span
+              class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+            >
+              {showOrderBook ? "Hide" : "Show"}
+            </span>
+          </button>
 
-          <div class="p-4 text-sm text-muted-foreground italic">
-            Order book coming soon.
-          </div>
+          {#if showOrderBook}
+            <div
+              class="border-t border-border/60 p-4 text-sm text-muted-foreground italic"
+            >
+              Order book coming soon.
+            </div>
+          {/if}
         </div>
 
         <!-- Market context card -->
